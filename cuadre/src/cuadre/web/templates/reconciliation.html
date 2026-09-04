@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/statement.html" import statement %}
+{% from "partials/tabs.html" import recon_tabs %}
+{% block title %}{{ account.name }} · {{ period.label }}{% endblock %}
+{% block crumbs %}
+<a href="/periodos">Períodos</a><span class="sep">/</span>
+<a href="/periodos/{{ period.id }}">{{ period.label }}</a><span class="sep">/</span>
+<span>{{ account.name }}</span>
+{% endblock %}
+{% block topactions %}
+<form method="post" action="/conciliaciones/{{ reconciliation.id }}/ejecutar" style="display:inline">
+  <button class="btn btn-primary btn-sm" type="submit"
+    {{ 'disabled' if reconciliation.status == 'PENDING_DATA' or not period.is_writable }}>
+    {{ icon('play', 14) }} Conciliar</button>
+</form>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>{{ client.name }} — {{ account.name }}</h1>
+  <div class="sub">{{ period.label }} · {{ account.masked_number }} · {{ reconciliation.currency }}
+    · <span class="pill {{ 'ok' if reconciliation.status == 'APPROVED' else 'brand' }}">
+      {{ ReconciliationStatus(reconciliation.status).label }}</span></div>
+</div></div>
+
+{{ recon_tabs(reconciliation, tab, tab_counts) }}
+
+<div class="grid two" style="align-items:start">
+  <div class="stack">
+    {{ statement(verification, reconciliation.currency) }}
+
+    <div class="card">
+      <div class="card-head"><h2>Aprobación</h2></div>
+      <div class="card-body">
+        {% if reconciliation.status == 'APPROVED' %}
+          <div class="note">{{ icon('check', 14) }} Aprobada el {{ reconciliation.approved_at | fechahora }}.</div>
+        {% elif blockers %}
+          <p class="small muted">Falta esto antes de poder aprobar:</p>
+          <ul class="small" style="margin:6px 0 12px 18px">
+            {% for blocker in blockers %}<li>{{ blocker }}</li>{% endfor %}
+          </ul>
+          <p class="hint">Quien prepara no aprueba: la firma queda con dos personas distintas.</p>
+        {% else %}
+          <form method="post" action="/conciliaciones/{{ reconciliation.id }}/aprobar">
+            <label class="field"><span>Notas del revisor (opcional)</span>
+              <textarea name="notas" rows="2"></textarea></label>
+            <button class="btn btn-primary" type="submit">{{ icon('check', 14) }} Aprobar conciliación</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Archivos</h2></div>
+      <div class="card-body">
+        {% if uploads %}
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Archivo</th><th>Tipo</th><th class="num">Filas</th><th>Estado</th></tr></thead>
+          <tbody>
+          {% for upload in uploads %}
+            <tr>
+              <td><div class="cell-title">{{ upload.filename }}</div>
+                  <div class="cell-sub mono" title="SHA-256 del contenido">{{ upload.content_hash[:24] }}…</div></td>
+              <td class="small">{{ UploadKind(upload.kind).label }}</td>
+              <td class="num">{{ upload.rows_imported }}
+                {% if upload.rows_rejected %}<div class="cell-sub neg">{{ upload.rows_rejected }} rechazadas</div>{% endif %}</td>
+              <td><span class="pill {{ 'ok' if upload.status == 'IMPORTED' else 'warn' }}">{{ UploadStatus(upload.status).label }}</span>
+                {% if upload.status == 'AWAITING_PROFILE' %}
+                  <a class="btn btn-sm" style="margin-top:4px" href="/cargas/{{ upload.id }}/mapeo">Mapear</a>
+                {% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody></table></div>
+        {% else %}
+          <p class="small muted">Sin archivos todavía. Cargue el estado de cuenta y el mayor.</p>
+        {% endif %}
+
+        {% if period.is_writable %}
+        <form method="post" action="/conciliaciones/{{ reconciliation.id }}/cargas"
+              enctype="multipart/form-data" style="margin-top:14px">
+          <div class="row wrap" style="gap:8px">
+            <select name="tipo" style="width:auto">
+              <option value="BANK_STATEMENT">Estado de cuenta</option>
+              <option value="LEDGER">Mayor</option>
+              <option value="SUBLEDGER">Auxiliar</option>
+            </select>
+            <input type="file" name="archivo" accept=".csv,.xlsx,.xlsm,.txt" required style="width:auto; flex:1">
+            <button class="btn" type="submit">{{ icon('upload', 14) }} Cargar</button>
+          </div>
+          <p class="hint">Excel o CSV. Si ya confirmó el formato de este banco, la carga entra sola.</p>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Saldos</h2></div>
+      <div class="card-body">
+        <form method="post" action="/conciliaciones/{{ reconciliation.id }}/saldos">
+          <div class="grid two" style="gap:10px">
+            <label class="field"><span>Saldo inicial del banco</span>
+              <input type="text" name="apertura_banco" class="num"
+                     value="{{ reconciliation.opening_bank_cents | money(reconciliation.currency) }}"></label>
+            <label class="field"><span>Saldo final del banco</span>
+              <input type="text" name="cierre_banco" class="num"
+                     value="{{ reconciliation.closing_bank_cents | money(reconciliation.currency) }}"></label>
+            <label class="field"><span>Saldo inicial de libros</span>
+              <input type="text" name="apertura_libros" class="num"
+                     value="{{ reconciliation.opening_ledger_cents | money(reconciliation.currency) }}"></label>
+            <label class="field"><span>Saldo final de libros</span>
+              <input type="text" name="cierre_libros" class="num"
+                     value="{{ reconciliation.closing_ledger_cents | money(reconciliation.currency) }}"></label>
+          </div>
+          <button class="btn" type="submit" {{ 'disabled' if not period.is_writable }}>Guardar saldos</button>
+          <p class="hint">Si el archivo trae saldo corriente, estos valores se llenan solos al importar.</p>
+        </form>
+      </div>
+    </div>
+
+    {% if runs %}
+    <div class="card">
+      <div class="card-head"><h2>Corridas</h2></div>
+      <div class="card-body">
+        <div class="timeline">
+          {% for run in runs %}
+          <div class="tl-item">
+            <div class="tl-when">{{ run.started_at | fechahora }} · motor {{ run.engine_version }}</div>
+            <div class="small">
+              {% if run.status == 'COMPLETED' %}
+                {% set s = run.stats %}
+                Etapa 2: {{ (s.etapa2.values() | sum) if s.etapa2 else 0 }} ·
+                Etapa 3: {{ (s.etapa3.values() | sum) if s.etapa3 else 0 }} ·
+                Etapa 4: {{ s.etapa4.emparejados if s.etapa4 else 0 }}
+                ({{ s.etapa4.pasadas if s.etapa4 else 0 }} pasada(s),
+                {{ s.etapa4.casos if s.etapa4 else 0 }} caso(s))
+                {% if s.etapa5 %}<br>Verificación:
+                  <span class="{{ 'pos' if s.etapa5.cuadra else 'neg' }}">
+                    {{ 'cuadra' if s.etapa5.cuadra else 'no cuadra' }}</span>,
+                  emparejamiento automático {{ '%.0f' % ((s.etapa5.tasa_emparejamiento or 0) * 100) }}%
+                {% endif %}
+              {% else %}
+                <span class="neg">{{ run.status }}: {{ run.error }}</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

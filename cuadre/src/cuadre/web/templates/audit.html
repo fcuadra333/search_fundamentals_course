@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Bitácora{% endblock %}
+{% block crumbs %}<span>Bitácora</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Bitácora</h1>
+  <div class="sub">Últimas 200 acciones de la firma. Nada se borra.</div></div></div>
+<div class="card"><div class="card-body tight">
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Cuándo</th><th>Usuario</th><th>Acción</th><th>Objeto</th><th>Detalle</th></tr></thead>
+    <tbody>
+    {% for entry in entries %}
+      <tr>
+        <td class="nowrap small">{{ entry.at | fechahora }}</td>
+        <td class="small">{{ entry.user.name if entry.user else 'sistema' }}</td>
+        <td><span class="pill">{{ entry.action }}</span></td>
+        <td class="small muted">{{ entry.object_type }}{% if entry.object_id %} #{{ entry.object_id }}{% endif %}</td>
+        <td class="small mono muted" style="max-width:520px; word-break:break-word">{{ entry.detail }}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+</div></div>
+{% endblock %}

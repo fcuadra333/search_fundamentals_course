@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Mapeo de columnas{% endblock %}
+{% block crumbs %}
+<a href="/periodos/{{ period.id }}">{{ period.label }}</a><span class="sep">/</span>
+<a href="/conciliaciones/{{ reconciliation.id }}">{{ account.name }}</a><span class="sep">/</span>
+<span>Mapeo</span>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>¿Qué significa cada columna?</h1>
+  <div class="sub">{{ upload.filename }} · {{ table.notes | join(' · ') }} ·
+    encabezado en la fila {{ table.header_row + 1 }}</div>
+</div></div>
+
+{% if proposal.overall_confidence >= 0.7 %}
+  <div class="note" style="margin-bottom:16px">{{ icon('check', 14) }}
+    Se reconoció el formato con {{ '%.0f' % (proposal.overall_confidence * 100) }}% de confianza.
+    Revise el mapeo y confirme: no se lo volveremos a preguntar para este banco.</div>
+{% else %}
+  <div class="note warn" style="margin-bottom:16px">{{ icon('alert', 14) }}
+    No se pudo reconocer el formato con seguridad. Indique cada columna a mano; queda guardado
+    para las próximas cargas.</div>
+{% endif %}
+{% for warning in proposal.warnings %}
+  <div class="note warn" style="margin-bottom:10px">{{ warning }}</div>
+{% endfor %}
+
+<form method="post" action="/cargas/{{ upload.id }}/mapeo">
+<div class="grid two" style="align-items:start">
+  <div class="card">
+    <div class="card-head"><h2>Asignación de columnas</h2></div>
+    <div class="card-body">
+      {% for role, label, required in roles %}
+        <label class="field"><span>{{ label }}{% if required %} <span class="neg">*</span>{% endif %}</span>
+          <select name="col_{{ role }}">
+            <option value="">— ninguna —</option>
+            {% for header in table.headers %}
+              <option value="{{ header }}" {{ 'selected' if proposal.mapping.get(role) == header }}>{{ header }}</option>
+            {% endfor %}
+          </select>
+          {% if proposal.confidence.get(role) %}
+            <div class="hint">Detectada con {{ '%.0f' % (proposal.confidence[role] * 100) }}% de confianza.</div>
+          {% endif %}
+        </label>
+      {% endfor %}
+      <input type="hidden" name="header_row" value="{{ table.header_row }}">
+      <label class="field"><span>Formato de fecha</span>
+        <input type="text" name="date_format" value="{{ proposal.date_format or '' }}"
+               placeholder="%d/%m/%Y — vacío para detectarlo en cada fila">
+      </label>
+      <label class="row small" style="gap:8px">
+        <input type="checkbox" name="invert_sign" class="pick">
+        Invertir el signo (el banco reporta desde su propio punto de vista)
+      </label>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Primeras filas del archivo</h2></div>
+      <div class="card-body tight">
+        <div class="table-wrap"><table class="data">
+          <thead><tr>{% for header in table.headers %}<th>{{ header }}</th>{% endfor %}</tr></thead>
+          <tbody>
+          {% for row in sample %}
+            <tr>{% for header in table.headers %}
+              <td class="small nowrap">{{ row[header] if row[header] is not none else '' }}</td>
+            {% endfor %}</tr>
+          {% endfor %}
+          </tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Recordar este formato</h2></div>
+      <div class="card-body">
+        <label class="row small" style="gap:8px; margin-bottom:10px">
+          <input type="checkbox" name="recordar" class="pick" checked>
+          Guardar como perfil de {{ account.bank_name or account.name }}
+        </label>
+        <label class="field"><span>Nombre del perfil</span>
+          <input type="text" name="perfil_nombre"
+                 value="{{ account.bank_name or account.name }} — {{ UploadKind(upload.kind).label }}"></label>
+        <p class="hint">El perfil se reutiliza en cada carga de este banco para este cliente.
+          Es lo que hace que la segunda carga no pregunte nada.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <a class="btn" href="/conciliaciones/{{ reconciliation.id }}">Cancelar</a>
+      <span class="spacer"></span>
+      <button class="btn btn-primary" type="submit">{{ icon('check', 14) }} Confirmar e importar</button>
+    </div>
+  </div>
+</div>
+</form>
+{% endblock %}

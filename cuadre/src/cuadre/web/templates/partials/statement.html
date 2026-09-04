@@ -1,0 +1,44 @@
+{# The four-column bank reconciliation. The one thing on screen that has to be
+   right, so it gets its own block and the same shape as the workpaper. #}
+{% macro statement(v, currency) %}
+<div class="card">
+  <div class="card-head">
+    <h2>Conciliación</h2>
+    <span class="spacer"></span>
+    <span class="pill {{ 'ok' if v.balanced else 'danger' }}">
+      <span class="dot"></span>{{ 'Cuadra' if v.balanced else 'No cuadra' }}
+    </span>
+  </div>
+  <div class="statement">
+    <div class="col">
+      <h3>Según el banco</h3>
+      <div class="st-line"><span>Saldo del estado de cuenta</span>
+        <span class="amt num">{{ v.bank_closing_cents | money(currency) }}</span></div>
+      <div class="st-line"><span>(+) Depósitos en tránsito</span>
+        <span class="amt num">{{ v.deposits_in_transit_cents | money(currency) }}</span></div>
+      <div class="st-line"><span>(−) Cheques en circulación</span>
+        <span class="amt num">{{ v.outstanding_checks_cents | money(currency) }}</span></div>
+      <div class="st-line total"><span>Saldo ajustado</span>
+        <span class="amt num">{{ v.adjusted_bank_cents | money(currency) }}</span></div>
+    </div>
+    <div class="col">
+      <h3>Según los libros</h3>
+      <div class="st-line"><span>Saldo del mayor</span>
+        <span class="amt num">{{ v.ledger_closing_cents | money(currency) }}</span></div>
+      <div class="st-line"><span>(+) Notas de crédito no registradas</span>
+        <span class="amt num">{{ v.bank_credits_unrecorded_cents | money(currency) }}</span></div>
+      <div class="st-line"><span>(−) Notas de débito no registradas</span>
+        <span class="amt num">{{ v.bank_charges_unrecorded_cents | money(currency) }}</span></div>
+      <div class="st-line total"><span>Saldo ajustado</span>
+        <span class="amt num">{{ v.adjusted_ledger_cents | money(currency) }}</span></div>
+    </div>
+  </div>
+  <div class="st-verdict {{ 'ok' if v.balanced else 'bad' }}">
+    {% if v.balanced %}
+      Los dos saldos ajustados coinciden. Diferencia {{ 0 | money(currency) }}.
+    {% else %}
+      Diferencia de {{ v.difference_cents | money(currency) }} sin explicar.
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}

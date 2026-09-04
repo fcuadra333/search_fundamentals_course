@@ -1,0 +1,30 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar · Cuadre</title>
+<link rel="stylesheet" href="/static/css/cuadre.css">
+<div class="auth">
+  <div class="auth-card">
+    <div class="brand">
+      <span class="brand-mark">C</span>
+      <span><span class="brand-name">Cuadre</span><br><span class="brand-sub">Conciliaciones contables</span></span>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h1 style="font-size:17px; margin-bottom:4px">Entrar</h1>
+        <p class="small muted" style="margin-bottom:18px">Acceso para el equipo de la firma.</p>
+        {% for flash in flashes %}<div class="note {{ 'danger' if flash.level == 'error' }}" style="margin-bottom:14px">{{ flash.text }}</div>{% endfor %}
+        <form method="post" action="/entrar">
+          <input type="hidden" name="siguiente" value="{{ siguiente }}">
+          <label class="field"><span>Correo</span>
+            <input type="email" name="correo" autocomplete="username" required autofocus></label>
+          <label class="field"><span>Contraseña</span>
+            <input type="password" name="clave" autocomplete="current-password" required></label>
+          <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+        </form>
+      </div>
+    </div>
+    <p class="small muted center" style="margin-top:14px">
+      Cada consulta queda filtrada por firma y cada acción queda en la bitácora.
+    </p>
+  </div>
+</div>

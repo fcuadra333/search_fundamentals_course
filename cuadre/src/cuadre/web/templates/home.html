@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Bandeja{% endblock %}
+{% block crumbs %}<span>Bandeja de trabajo</span>{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Bandeja de trabajo</h1>
+    <div class="sub">Lo que está abierto en la cartera, del período más reciente hacia atrás.</div>
+  </div>
+</div>
+
+<div class="grid four" style="margin-bottom:20px">
+  <div class="stat accent">
+    <div class="label">Conciliaciones abiertas</div>
+    <div class="value">{{ rows | length }}</div>
+    <div class="foot">en períodos no cerrados</div>
+  </div>
+  <div class="stat {{ 'bad' if proposals else '' }}">
+    <div class="label">Propuestas por revisar</div>
+    <div class="value">{{ proposals }}</div>
+    <div class="foot">emparejamientos sugeridos por el modelo</div>
+  </div>
+  <div class="stat">
+    <div class="label">Excepciones abiertas</div>
+    <div class="value">{{ open_exceptions }}</div>
+    <div class="foot">{{ open_exceptions_amount | money }} en partidas</div>
+  </div>
+  <div class="stat {{ 'bad' if aged else '' }}">
+    <div class="label">Con más de 90 días</div>
+    <div class="value">{{ aged }}</div>
+    <div class="foot">partidas que arrastran de períodos anteriores</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Conciliaciones</h2>
+    <span class="spacer"></span>
+    <a class="btn btn-sm" href="/periodos">{{ icon('calendar', 14) }} Ver por período</a>
+  </div>
+  <div class="card-body tight">
+    {% if not rows %}
+      <div class="empty"><div class="big">No hay trabajo abierto</div>
+        Abra un período desde la ficha de un cliente para empezar.</div>
+    {% else %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th>Cliente / cuenta</th><th>Período</th><th>Estado</th>
+          <th class="num">Diferencia</th><th class="num">Excepciones</th>
+          <th class="num">Por revisar</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <div class="cell-title">{{ row.client.name if row.client }}</div>
+              <div class="cell-sub">{{ row.account.name }} · {{ row.account.masked_number }}</div>
+            </td>
+            <td class="nowrap">{{ row.period.label }}</td>
+            <td>
+              {% set st = row.reconciliation.status %}
+              <span class="pill {{ 'ok' if st == 'APPROVED' else ('warn' if st in ('PENDING_DATA','FAILED') else 'brand') }}">
+                {{ row.status }}</span>
+            </td>
+            <td class="num {{ 'pos' if row.reconciliation.balanced else 'neg' }}">
+              {{ row.reconciliation.difference_cents | money(row.reconciliation.currency) }}
+            </td>
+            <td class="num">{{ row.open_exceptions or '—' }}</td>
+            <td class="num">{{ row.pending or '—' }}</td>
+            <td class="right">
+              <a class="btn btn-sm" href="/conciliaciones/{{ row.reconciliation.id }}">Abrir</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

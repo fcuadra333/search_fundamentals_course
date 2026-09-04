@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}{{ period.label }}{% endblock %}
+{% block crumbs %}
+<a href="/periodos">Períodos</a><span class="sep">/</span>
+<a href="/clientes/{{ client.id }}">{{ client.name if client }}</a><span class="sep">/</span>
+<span>{{ period.label }}</span>
+{% endblock %}
+{% block topactions %}
+<form method="post" action="/periodos/{{ period.id }}/papeles" style="display:inline">
+  <button class="btn btn-sm" type="submit">{{ icon('download', 14) }} Papeles del período</button>
+</form>
+{% if period.status != 'CLOSED' %}
+<form method="post" action="/periodos/{{ period.id }}/cerrar" style="display:inline"
+      data-confirm="Cerrar el período lo deja inmutable. ¿Continuar?">
+  <button class="btn btn-sm" type="submit">{{ icon('lock', 14) }} Cerrar período</button>
+</form>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>{{ entity.name }} — {{ period.label }}</h1>
+  <div class="sub">{{ period.start_date | fecha }} al {{ period.end_date | fecha }} ·
+    <span class="pill {{ 'ok' if period.status == 'CLOSED' else 'brand' }}">{{ PeriodStatus(period.status).label }}</span>
+    {% if period.closed_at %}<span class="muted"> cerrado el {{ period.closed_at | fechahora }}</span>{% endif %}
+  </div>
+</div></div>
+
+{% if period.status == 'CLOSED' %}
+<div class="note" style="margin-bottom:16px">{{ icon('lock', 14) }}
+  Período cerrado: no admite cargas, emparejamientos ni cambios. Los papeles de trabajo se
+  siguen reconstruyendo idénticos desde la base.</div>
+{% endif %}
+
+<div class="card"><div class="card-body tight">
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Cuenta</th><th>Estado</th><th class="num">Saldo banco</th>
+      <th class="num">Saldo libros</th><th class="num">Diferencia</th>
+      <th class="num">Excepciones</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      {% set r = row.reconciliation %}
+      <tr>
+        <td><div class="cell-title">{{ row.account.name }}</div>
+            <div class="cell-sub mono">{{ row.account.masked_number }} · {{ r.currency }}</div></td>
+        <td><span class="pill {{ 'ok' if r.status == 'APPROVED' else ('warn' if r.status in ('PENDING_DATA','FAILED') else 'brand') }}">
+          {{ row.status }}</span></td>
+        <td class="num">{{ r.closing_bank_cents | money(r.currency) }}</td>
+        <td class="num">{{ r.closing_ledger_cents | money(r.currency) }}</td>
+        <td class="num {{ 'pos' if r.balanced else 'neg' }}">{{ r.difference_cents | money(r.currency) }}</td>
+        <td class="num">{{ row.open_exceptions or '—' }}</td>
+        <td class="right"><a class="btn btn-sm" href="/conciliaciones/{{ r.id }}">Abrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+</div></div>
+{% endblock %}

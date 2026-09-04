@@ -1,0 +1,25 @@
+{% macro recon_tabs(reconciliation, tab, counts) %}
+<div class="tabs">
+  <a class="tab {{ 'active' if tab == 'resumen' }}" href="/conciliaciones/{{ reconciliation.id }}">Resumen</a>
+  <a class="tab {{ 'active' if tab == 'emparejamientos' }}" href="/conciliaciones/{{ reconciliation.id }}/emparejamientos">
+    Emparejamientos{% if counts.propuestas %}<span class="count">{{ counts.propuestas }} por revisar</span>{% endif %}
+  </a>
+  <a class="tab {{ 'active' if tab == 'excepciones' }}" href="/conciliaciones/{{ reconciliation.id }}/excepciones">
+    Excepciones{% if counts.excepciones %}<span class="count">{{ counts.excepciones }}</span>{% endif %}
+  </a>
+  <a class="tab {{ 'active' if tab == 'papeles' }}" href="/conciliaciones/{{ reconciliation.id }}/papeles">Papeles de trabajo</a>
+</div>
+{% endmacro %}
+
+{% macro provenance(method) %}
+{% set map = {'EXACT': ('prov-deterministic', 'Determinista'), 'FUZZY': ('prov-deterministic', 'Determinista'),
+              'MODEL': ('prov-model', 'Modelo'), 'MANUAL': ('prov-human', 'Humano')} %}
+{% set cls, label = map.get(method, ('', method)) %}
+<span class="pill {{ cls }}"><span class="dot"></span>{{ label }}</span>
+{% endmacro %}
+
+{% macro aging(days) %}
+{% if days > 90 %}<span class="aging-90">{{ days | antiguedad }}</span>
+{% elif days > 30 %}<span class="aging-30">{{ days | antiguedad }}</span>
+{% else %}<span class="aging-0">{{ days | antiguedad }}</span>{% endif %}
+{% endmacro %}

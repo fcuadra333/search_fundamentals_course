@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Equipo{% endblock %}
+{% block crumbs %}<span>Equipo</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Equipo</h1>
+  <div class="sub">El revisor es quien aprueba. Quien prepara una conciliación no la aprueba.</div></div></div>
+<div class="card"><div class="card-body tight">
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Persona</th><th>Correo</th><th>Rol</th><th>Aprueba</th><th>Último ingreso</th></tr></thead>
+    <tbody>
+    {% for member in users %}
+      <tr>
+        <td><div class="row"><span class="avatar">{{ member.name | iniciales }}</span>
+          <span class="cell-title">{{ member.name }}</span></div></td>
+        <td class="small muted">{{ member.email }}</td>
+        <td><span class="pill">{{ Role(member.role).label }}</span></td>
+        <td>{% if Role(member.role).can_approve %}<span class="pill ok">sí</span>
+            {% else %}<span class="pill">no</span>{% endif %}</td>
+        <td class="small muted">{{ member.last_login_at | fechahora }}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+</div></div>
+{% endblock %}

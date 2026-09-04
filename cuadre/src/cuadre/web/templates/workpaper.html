@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/tabs.html" import recon_tabs %}
+{% block title %}Papeles de trabajo{% endblock %}
+{% block crumbs %}
+<a href="/periodos/{{ period.id }}">{{ period.label }}</a><span class="sep">/</span>
+<a href="/conciliaciones/{{ reconciliation.id }}">{{ account.name }}</a><span class="sep">/</span>
+<span>Papeles de trabajo</span>
+{% endblock %}
+{% block topactions %}
+<form method="post" action="/conciliaciones/{{ reconciliation.id }}/papeles" style="display:inline">
+  <button class="btn btn-primary btn-sm" type="submit">{{ icon('download', 14) }} Generar Excel y PDF</button>
+</form>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Papeles de trabajo</h1>
+  <div class="sub">{{ workpaper.title }}</div>
+</div></div>
+
+{{ recon_tabs(reconciliation, tab, tab_counts) }}
+
+<div class="grid two" style="align-items:start">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Contenido del papel</h2>
+        <span class="spacer"></span>
+        <span class="pill {{ 'ok' if workpaper.balanced else 'danger' }}">
+          {{ 'Cuadra' if workpaper.balanced else 'No cuadra' }}</span></div>
+      <div class="card-body">
+        <table class="data">
+          <tbody>
+          {% for label, cents, kind in workpaper.statement %}
+            <tr {% if kind.endswith('total') or kind == 'difference' %}style="font-weight:650"{% endif %}>
+              <td>{{ label }}</td>
+              <td class="num">{{ cents | money(account.currency) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-foot small">
+        <div class="row wrap" style="gap:18px">
+          <span>Emparejamientos: <b>{{ workpaper.matches.rows | length }}</b></span>
+          <span>Excepciones: <b>{{ workpaper.exceptions.rows | length }}</b></span>
+          <span>Correcciones humanas: <b>{{ workpaper.corrections.rows | length }}</b></span>
+          <span>Llamadas a modelos: <b>{{ workpaper.model_usage.rows | length }}</b></span>
+          <span>Emparejamiento automático: <b>{{ '%.1f' % (workpaper.match_rate * 100) }}%</b></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Archivos de origen</h2></div>
+      <div class="card-body tight">
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Archivo</th><th>SHA-256</th><th class="num">Importadas</th></tr></thead>
+          <tbody>
+          {% for row in workpaper.sources.rows %}
+            <tr><td>{{ row[0] }}<div class="cell-sub">{{ row[1] }}</div></td>
+              <td class="mono small">{{ row[2] }}</td>
+              <td class="num">{{ row[5] }} / {{ row[4] }}</td></tr>
+          {% endfor %}
+          </tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Firmas</h2></div>
+      <div class="card-body">
+        <div class="row" style="padding:8px 0; border-bottom:1px solid var(--line-soft)">
+          <div><div class="small muted">Preparado por</div>
+            <div class="cell-title">{{ workpaper.prepared_by.name if workpaper.prepared_by else '—' }}</div></div>
+        </div>
+        <div class="row" style="padding:8px 0">
+          <div><div class="small muted">Revisado y aprobado por</div>
+            <div class="cell-title">{{ workpaper.reviewed_by.name if workpaper.reviewed_by else 'Pendiente' }}</div>
+            <div class="cell-sub">{{ reconciliation.approved_at | fechahora }}</div></div>
+        </div>
+        <div class="note" style="margin-top:12px">
+          <div class="small">Huella del papel de trabajo</div>
+          <div class="mono" style="word-break:break-all">{{ workpaper.fingerprint }}</div>
+        </div>
+        <p class="hint">La huella se calcula sobre los saldos, los emparejamientos y los hashes de
+          los archivos. Dos exportaciones del mismo período aprobado dan la misma huella.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Archivos generados</h2></div>
+      <div class="card-body">
+        {% if not files %}
+          <p class="small muted">Todavía no se ha generado ninguno.</p>
+        {% else %}
+          {% for file in files %}
+            <div class="row" style="padding:7px 0; border-bottom:1px solid var(--line-soft)">
+              {{ icon('file', 15) }}
+              <a href="/descargas/{{ file.name }}">{{ file.name }}</a>
+              <span class="spacer"></span>
+              <span class="small muted">{{ (file.size / 1024) | round(1) }} KB</span>
+            </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Correcciones{% endblock %}
+{% block crumbs %}<span>Correcciones</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Correcciones humanas</h1>
+  <div class="sub">Cada vez que una persona corrige al sistema queda aquí. No se descarta:
+    es la semilla del ciclo de aprendizaje.</div></div></div>
+
+<div class="grid two" style="align-items:start">
+  <div class="card">
+    <div class="card-head"><h2>Correcciones</h2><span class="pill">{{ rows | length }}</span></div>
+    <div class="card-body tight">
+      {% if not rows %}<div class="empty">Ninguna todavía.</div>{% else %}
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Cuándo</th><th>Quién</th><th>Acción</th><th>Motivo</th></tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>
+            <td class="nowrap small">{{ row.created_at | fechahora }}</td>
+            <td class="small">{{ row.user.name if row.user else '—' }}</td>
+            <td><span class="pill">{{ row.action }}</span>
+              {% if row.proposed %}<div class="cell-sub">el sistema proponía otra cosa</div>{% endif %}</td>
+            <td class="small muted">{{ row.reason or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Reglas derivadas</h2><span class="pill">{{ rules | length }}</span></div>
+    <div class="card-body">
+      <div class="note" style="margin-bottom:12px">
+        En esta versión las reglas se registran pero no se aplican solas. Se acumulan por cliente
+        y son lo que el ciclo de aprendizaje usará en la fase 2.
+      </div>
+      {% if not rules %}<p class="small muted">Ninguna todavía.</p>{% endif %}
+      {% for rule in rules %}
+        <div style="padding:9px 0; border-bottom:1px solid var(--line-soft)">
+          <div class="cell-title small">{{ rule.name }}</div>
+          <div class="cell-sub">{{ clients[rule.client_id].name if rule.client_id in clients }} ·
+            aplicada {{ rule.hits }} vez(ces) ·
+            {{ 'automática' if rule.auto_apply else 'solo registrada' }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

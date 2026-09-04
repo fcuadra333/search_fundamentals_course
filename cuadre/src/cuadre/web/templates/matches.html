@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/tabs.html" import recon_tabs, provenance %}
+{% block title %}Emparejamientos{% endblock %}
+{% block crumbs %}
+<a href="/periodos/{{ period.id }}">{{ period.label }}</a><span class="sep">/</span>
+<a href="/conciliaciones/{{ reconciliation.id }}">{{ account.name }}</a><span class="sep">/</span>
+<span>Emparejamientos</span>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Emparejamientos</h1>
+  <div class="sub">Cada uno guarda su procedencia: método, confianza, quién aprobó y cuándo.</div>
+</div></div>
+
+{{ recon_tabs(reconciliation, tab, tab_counts) }}
+
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head"><h2>{{ matches | length }} emparejamiento(s)</h2>
+    <span class="spacer"></span>
+    <span class="pill prov-deterministic"><span class="dot"></span>Determinista</span>
+    <span class="pill prov-model"><span class="dot"></span>Modelo</span>
+    <span class="pill prov-human"><span class="dot"></span>Humano</span>
+  </div>
+  <div class="card-body tight">
+    {% if not matches %}
+      <div class="empty"><div class="big">Todavía no se ha conciliado</div>
+        Cargue los archivos y pulse «Conciliar».</div>
+    {% else %}
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Procedencia</th><th>Banco</th><th>Libros</th>
+        <th class="num">Monto</th><th class="num">Conf.</th><th>Justificación</th>
+        <th>Estado</th><th></th></tr></thead>
+      <tbody>
+      {% for match in matches %}
+        <tr class="{{ 'matched' if match.status == 'REJECTED' }}">
+          <td>{{ provenance(match.method) }}
+            <div class="cell-sub">etapa {{ match.stage }} · {{ match.movements | length }}:{{ match.entries | length }}</div></td>
+          <td>{% for line in match.movements %}
+              <div class="small">{{ line.value_date | fecha }} · {{ line.raw_description[:48] }}</div>
+            {% endfor %}</td>
+          <td>{% for line in match.entries %}
+              <div class="small">{{ line.value_date | fecha }} · {{ line.raw_description[:48] }}</div>
+            {% endfor %}</td>
+          <td class="num">{{ match.amount_cents | money(reconciliation.currency) }}</td>
+          <td class="num">{{ '%.2f' % match.confidence }}</td>
+          <td class="small muted">{{ match.rationale or '' }}</td>
+          <td><span class="pill {{ 'ok' if match.status == 'APPROVED' else ('danger' if match.status == 'REJECTED' else 'warn') }}">
+              {{ MatchStatus(match.status).label }}</span>
+            {% if match.approved_by %}<div class="cell-sub">{{ match.approved_by.name }}</div>{% endif %}</td>
+          <td class="right nowrap">
+            {% if period.is_writable %}
+              {% if match.status == 'PROPOSED' %}
+              <form method="post" action="/emparejamientos/{{ match.id }}/aprobar" style="display:inline">
+                <button class="btn btn-sm btn-primary" type="submit">Aprobar</button></form>
+              {% endif %}
+              {% if match.status != 'REJECTED' %}
+              <details style="display:inline-block">
+                <summary class="btn btn-sm btn-danger" style="list-style:none">Anular</summary>
+                <form method="post" action="/emparejamientos/{{ match.id }}/anular"
+                      style="position:absolute; z-index:9; background:var(--surface); border:1px solid var(--line);
+                             border-radius:8px; padding:10px; box-shadow:var(--shadow-md); width:280px">
+                  <label class="field"><span>Motivo (obligatorio)</span>
+                    <textarea name="motivo" rows="2" required
+                      placeholder="Por qué este emparejamiento no corresponde"></textarea></label>
+                  <button class="btn btn-sm btn-danger" type="submit">Confirmar anulación</button>
+                </form>
+              </details>
+              {% endif %}
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% endif %}
+  </div>
+</div>
+
+{% if period.is_writable and (free_movements or free_entries) %}
+<form method="post" action="/conciliaciones/{{ reconciliation.id }}/manual" id="manual-form">
+<div class="card">
+  <div class="card-head"><h2>Emparejar a mano</h2>
+    <span class="spacer"></span>
+    <span class="small muted">Banco <b id="sum-bank" class="num">0.00</b> · Libros
+      <b id="sum-ledger" class="num">0.00</b> ·
+      <span id="sum-verdict" class="pill">Seleccione partidas</span></span>
+  </div>
+  <div class="card-body">
+    <div class="panes">
+      <div>
+        <div class="pane-head">Movimientos del banco sin emparejar ({{ free_movements | length }})</div>
+        <div class="table-wrap" style="max-height:340px; overflow-y:auto; border:1px solid var(--line); border-top:none">
+          <table class="data"><tbody>
+          {% for line in free_movements %}
+            <tr><td style="width:28px"><input type="checkbox" class="pick" name="movimiento"
+                     value="{{ line.id }}" data-amount="{{ line.amount_cents }}" data-side="bank"></td>
+              <td><div class="small">{{ line.raw_description[:60] }}</div>
+                  <div class="cell-sub">{{ line.value_date | fecha }}{% if line.reference %} · ref {{ line.reference }}{% endif %}</div></td>
+              <td class="num nowrap {{ 'neg' if line.amount_cents < 0 else 'pos' }}">
+                {{ line.amount_cents | money(reconciliation.currency) }}</td></tr>
+          {% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+      <div>
+        <div class="pane-head">Asientos del libro sin emparejar ({{ free_entries | length }})</div>
+        <div class="table-wrap" style="max-height:340px; overflow-y:auto; border:1px solid var(--line); border-top:none">
+          <table class="data"><tbody>
+          {% for line in free_entries %}
+            <tr><td style="width:28px"><input type="checkbox" class="pick" name="asiento"
+                     value="{{ line.id }}" data-amount="{{ line.amount_cents }}" data-side="ledger"></td>
+              <td><div class="small">{{ line.raw_description[:60] }}</div>
+                  <div class="cell-sub">{{ line.value_date | fecha }}{% if line.reference %} · ref {{ line.reference }}{% endif %}</div></td>
+              <td class="num nowrap {{ 'neg' if line.amount_cents < 0 else 'pos' }}">
+                {{ line.amount_cents | money(reconciliation.currency) }}</td></tr>
+          {% endfor %}
+          </tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="row wrap" style="margin-top:14px; gap:10px">
+      <input type="text" name="motivo" placeholder="Motivo o nota (opcional)" style="flex:1; min-width:240px">
+      <button class="btn btn-primary" type="submit" id="manual-submit" disabled>
+        {{ icon('link', 14) }} Emparejar selección</button>
+    </div>
+    <p class="hint">Los dos lados deben sumar exactamente lo mismo. Puede seleccionar varias
+      partidas de cada lado: un depósito que cancela cinco facturas es un solo emparejamiento.</p>
+  </div>
+</div>
+</form>
+{% endif %}
+{% endblock %}

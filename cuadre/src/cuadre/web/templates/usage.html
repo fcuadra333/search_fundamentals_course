@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Consumo de modelos{% endblock %}
+{% block crumbs %}<span>Consumo de modelos</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Consumo de modelos</h1>
+  <div class="sub">Una fila por llamada, sea cual sea el proveedor. Costo en dólares, calculado
+    con la tarifa publicada de cada modelo.</div></div></div>
+
+<div class="grid four" style="margin-bottom:18px">
+  <div class="stat"><div class="label">Llamadas</div><div class="value">{{ totals.llamadas }}</div></div>
+  <div class="stat"><div class="label">Tokens de entrada</div>
+    <div class="value">{{ '{:,}'.format(totals.entrada) }}</div></div>
+  <div class="stat"><div class="label">Tokens de salida</div>
+    <div class="value">{{ '{:,}'.format(totals.salida) }}</div></div>
+  <div class="stat accent"><div class="label">Costo acumulado</div>
+    <div class="value">US$ {{ '%.4f' % (totals.costo_micros / 1000000) }}</div>
+    <div class="foot">{{ totals.fallidas }} llamada(s) sin respuesta válida</div></div>
+</div>
+
+<div class="card"><div class="card-body tight">
+  {% if not calls %}<div class="empty"><div class="big">Sin llamadas registradas</div>
+    Las etapas 2 y 3 resolvieron todo sin tocar un modelo.</div>{% else %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Cuándo</th><th>Corrida</th><th>Proveedor</th><th>Modelo</th><th>Lote</th>
+      <th class="num">Entrada</th><th class="num">Salida</th><th class="num">Costo</th>
+      <th class="num">Intentos</th><th>Válida</th></tr></thead>
+    <tbody>
+    {% for call in calls %}
+      <tr>
+        <td class="nowrap small">{{ call.created_at | fechahora }}</td>
+        <td class="small">#{{ call.run_id }}</td>
+        <td class="small">{{ call.provider }}</td>
+        <td class="small mono">{{ call.model }}</td>
+        <td class="small">{{ 'sí' if call.batched else 'no' }}</td>
+        <td class="num">{{ '{:,}'.format(call.input_tokens) }}</td>
+        <td class="num">{{ '{:,}'.format(call.output_tokens) }}</td>
+        <td class="num">US$ {{ '%.6f' % (call.cost_micros / 1000000) }}</td>
+        <td class="num">{{ call.attempts }}</td>
+        <td>{% if call.ok %}<span class="pill ok">sí</span>
+            {% else %}<span class="pill danger" title="{{ call.schema_error }}">no</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% endif %}
+</div></div>
+{% endblock %}

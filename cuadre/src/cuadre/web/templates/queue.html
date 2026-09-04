@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% from "partials/tabs.html" import recon_tabs, provenance, aging %}
+{% block title %}Cola de excepciones{% endblock %}
+{% block crumbs %}
+<a href="/periodos/{{ period.id }}">{{ period.label }}</a><span class="sep">/</span>
+<a href="/conciliaciones/{{ reconciliation.id }}">{{ account.name }}</a><span class="sep">/</span>
+<span>Excepciones</span>
+{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Cola de excepciones</h1>
+  <div class="sub">Ordenadas por monto y antigüedad. Cada una muestra los candidatos que el
+    sistema consideró y por qué los descartó.</div>
+</div></div>
+
+{{ recon_tabs(reconciliation, tab, tab_counts) }}
+
+{% if proposals %}
+<div class="card" style="margin-bottom:18px">
+  <div class="card-head"><h2>Propuestas del modelo por revisar</h2>
+    <span class="pill model">{{ proposals | length }}</span></div>
+  <div class="card-body tight">
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Banco</th><th>Libros</th><th class="num">Monto</th>
+        <th class="num">Conf.</th><th>Justificación del modelo</th><th></th></tr></thead>
+      <tbody>
+      {% for match in proposals %}
+        <tr>
+          <td>{% for line in match.movements %}<div class="small">{{ line.value_date | fecha }} · {{ line.raw_description[:44] }}</div>{% endfor %}</td>
+          <td>{% for line in match.entries %}<div class="small">{{ line.value_date | fecha }} · {{ line.raw_description[:44] }}</div>{% endfor %}</td>
+          <td class="num">{{ match.amount_cents | money(reconciliation.currency) }}</td>
+          <td class="num">{{ '%.2f' % match.confidence }}</td>
+          <td class="small muted">{{ match.rationale }}</td>
+          <td class="right nowrap">
+            {% if period.is_writable %}
+            <form method="post" action="/emparejamientos/{{ match.id }}/aprobar" style="display:inline">
+              <button class="btn btn-sm btn-primary" type="submit">Aprobar</button></form>
+            <a class="btn btn-sm" href="/conciliaciones/{{ reconciliation.id }}/emparejamientos">Anular…</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row wrap" style="margin-bottom:14px; gap:6px">
+  {% for value, label in [('OPEN','Abiertas'),('RECONCILING_ITEM','Partidas conciliatorias'),
+                          ('DEFERRED','Diferidas'),('RESOLVED','Resueltas'),('TODAS','Todas')] %}
+    <a class="btn btn-sm {{ 'btn-primary' if estado == value }}"
+       href="/conciliaciones/{{ reconciliation.id }}/excepciones?estado={{ value }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if not exceptions %}
+  <div class="card"><div class="empty">
+    <div class="big">Nada en esta vista</div>
+    {% if estado == 'OPEN' %}No queda ninguna excepción abierta en esta conciliación.{% endif %}
+  </div></div>
+{% endif %}
+
+{% for exception in exceptions %}
+  {% set line = exception.movement if exception.side == 'BANK' else exception.entry %}
+  <div class="exc">
+    <div class="exc-head">
+      <div style="min-width:0; flex:1">
+        <div class="row wrap" style="gap:8px; margin-bottom:5px">
+          <span class="pill {{ 'brand' if exception.side == 'BANK' else '' }}">
+            {{ 'Banco' if exception.side == 'BANK' else 'Libros' }}</span>
+          <span class="pill">{{ ExceptionStatus(exception.status).label }}</span>
+          <span class="small muted">{{ line.value_date | fecha if line }}</span>
+          {% if line and line.reference %}<span class="small mono muted">ref {{ line.reference }}</span>{% endif %}
+          <span class="small">{{ aging(exception.age_days) }}</span>
+          {% if exception.carried_from_id %}
+            <span class="pill warn" title="Viene de un período anterior">arrastrada</span>{% endif %}
+        </div>
+        <div class="cell-title">{{ line.raw_description if line else '—' }}</div>
+        {% if exception.reason %}<div class="cell-sub">{{ exception.reason }}</div>{% endif %}
+      </div>
+      <div class="right">
+        <div class="exc-amount {{ 'neg' if exception.amount_cents < 0 else 'pos' }}">
+          {{ exception.amount_cents | money(reconciliation.currency) }}</div>
+        <div class="cell-sub">{{ ExceptionCategory(exception.category).label if exception.category }}</div>
+      </div>
+    </div>
+
+    <div class="exc-body">
+      {% if exception.candidates %}
+        <div class="small muted">Candidatos considerados por el motor:</div>
+        <div class="candidates">
+          {% for candidate in exception.candidates[:5] %}
+            <div class="cand">
+              <span class="score">{{ '%.2f' % candidate.puntaje }}</span>
+              <div style="min-width:0">
+                <div class="small">{{ candidate.descripcion }}</div>
+                <div class="why">{{ candidate.fecha }} ·
+                  {{ candidate.monto | money(reconciliation.currency) }} ·
+                  descartado: {{ candidate.motivo }}</div>
+              </div>
+              {% if period.is_writable and exception.status != 'RESOLVED' %}
+              <form method="post" action="/excepciones/{{ exception.id }}/emparejar">
+                <input type="hidden" name="candidato" value="{{ candidate.id }}">
+                <input type="hidden" name="motivo" value="Emparejado a mano desde la cola.">
+                <button class="btn btn-sm" type="submit">{{ icon('link', 13) }} Emparejar</button>
+              </form>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="small muted">El motor no encontró ningún candidato plausible para esta partida.</div>
+      {% endif %}
+
+      {% if period.is_writable and exception.status != 'RESOLVED' %}
+      <div class="grid three" style="margin-top:14px">
+        <form method="post" action="/excepciones/{{ exception.id }}/conciliatoria">
+          <label class="field"><span>Es una partida conciliatoria legítima</span>
+            <select name="categoria">
+              {% for category in categories %}
+                <option value="{{ category.value }}" {{ 'selected' if category.value == exception.category }}>
+                  {{ category.label }}</option>
+              {% endfor %}
+            </select></label>
+          <input type="hidden" name="motivo" value="">
+          <button class="btn btn-sm" type="submit">Marcar como conciliatoria</button>
+        </form>
+        <form method="post" action="/excepciones/{{ exception.id }}/diferir">
+          <label class="field"><span>Diferir al período siguiente</span>
+            <input type="text" name="motivo" placeholder="Motivo (obligatorio)" required></label>
+          <button class="btn btn-sm" type="submit">Diferir</button>
+        </form>
+        <form method="post" action="/excepciones/{{ exception.id }}/asignar">
+          <label class="field"><span>Asignar a</span>
+            <select name="usuario">
+              <option value="">— sin asignar —</option>
+              {% for member in team %}
+                <option value="{{ member.id }}" {{ 'selected' if member.id == exception.assigned_to_id }}>
+                  {{ member.name }}</option>
+              {% endfor %}
+            </select></label>
+          <button class="btn btn-sm" type="submit">Asignar</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+{% endfor %}
+{% endblock %}

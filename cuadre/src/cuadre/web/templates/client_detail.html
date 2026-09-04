@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}{{ client.name }}{% endblock %}
+{% block crumbs %}<a href="/clientes">Cartera</a><span class="sep">/</span><span>{{ client.name }}</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>{{ client.name }}</h1>
+  <div class="sub">Código {{ client.code }} · {{ blocks | length }} entidad(es)</div>
+</div></div>
+
+{% for block in blocks %}
+<div class="card" style="margin-bottom:16px">
+  <div class="card-head">
+    <h2>{{ block.entity.name }}</h2>
+    <span class="pill">{{ block.entity.functional_currency }}</span>
+    {% if block.entity.tax_id %}<span class="small muted mono">{{ block.entity.tax_id }}</span>{% endif %}
+  </div>
+  <div class="card-body">
+    <div class="grid two">
+      <div>
+        <h3 class="small muted" style="margin-bottom:8px">CUENTAS BANCARIAS</h3>
+        {% if not block.accounts %}<p class="small muted">Sin cuentas bancarias registradas.</p>{% endif %}
+        {% for account in block.accounts %}
+          <div class="row" style="padding:7px 0; border-bottom:1px solid var(--line-soft)">
+            <div>
+              <div class="cell-title">{{ account.name }}</div>
+              <div class="cell-sub mono">{{ account.number }} · {{ account.currency }}</div>
+            </div>
+            <span class="spacer"></span>
+            {% if account.format_profile_id %}
+              <span class="pill ok" title="El mapeo de columnas de este banco ya está confirmado">
+                {{ icon('check', 12) }} Perfil listo</span>
+            {% else %}
+              <span class="pill warn">Sin perfil de formato</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div>
+        <h3 class="small muted" style="margin-bottom:8px">ABRIR UN PERÍODO</h3>
+        <form method="post" action="/entidades/{{ block.entity.id }}/periodos" class="row wrap" style="gap:8px">
+          <select name="mes" style="width:auto">
+            {% for m, nombre in [(1,'enero'),(2,'febrero'),(3,'marzo'),(4,'abril'),(5,'mayo'),(6,'junio'),(7,'julio'),(8,'agosto'),(9,'septiembre'),(10,'octubre'),(11,'noviembre'),(12,'diciembre')] %}
+              <option value="{{ m }}">{{ nombre }}</option>
+            {% endfor %}
+          </select>
+          <input type="number" name="anio" value="2026" min="2000" max="2100" style="width:110px">
+          <button class="btn btn-primary" type="submit">{{ icon('calendar', 14) }} Abrir</button>
+        </form>
+        <p class="hint">Se crea una conciliación por cada cuenta bancaria activa, con los saldos
+          finales del período anterior como saldos iniciales.</p>
+
+        <h3 class="small muted" style="margin:16px 0 8px">PERÍODOS</h3>
+        {% if not block.periods %}<p class="small muted">Todavía ninguno.</p>{% endif %}
+        {% for period in block.periods[:12] %}
+          <div class="row" style="padding:5px 0">
+            <a href="/periodos/{{ period.id }}">{{ period.label }}</a>
+            <span class="spacer"></span>
+            <span class="pill {{ 'ok' if period.status == 'CLOSED' else '' }}">{{ PeriodStatus(period.status).label }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

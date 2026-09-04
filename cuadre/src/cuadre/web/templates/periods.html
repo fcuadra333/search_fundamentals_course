@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Períodos{% endblock %}
+{% block crumbs %}<span>Períodos</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Períodos</h1>
+  <div class="sub">Un período por entidad y mes. Al cerrarlo queda inmutable.</div></div></div>
+<div class="card"><div class="card-body tight">
+  {% if not rows %}<div class="empty"><div class="big">Sin períodos abiertos</div></div>{% else %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Período</th><th>Cliente</th><th>Entidad</th><th>Estado</th>
+      <th class="num">Cuentas</th><th class="num">Cuadran</th><th class="num">Aprobadas</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td class="nowrap cell-title">{{ row.period.label }}</td>
+        <td>{{ row.client.name if row.client }}</td>
+        <td class="small muted">{{ row.entity.name if row.entity }}</td>
+        <td><span class="pill {{ 'ok' if row.period.status == 'CLOSED' else 'brand' }}">
+          {{ PeriodStatus(row.period.status).label }}</span></td>
+        <td class="num">{{ row.total }}</td>
+        <td class="num">{{ row.balanced }}/{{ row.total }}</td>
+        <td class="num">{{ row.approved }}/{{ row.total }}</td>
+        <td class="right"><a class="btn btn-sm" href="/periodos/{{ row.period.id }}">Abrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% endif %}
+</div></div>
+{% endblock %}

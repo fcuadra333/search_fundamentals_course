@@ -1,0 +1,87 @@
+{% from "partials/icons.html" import icon %}<!-- Cuadre -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Cuadre{% endblock %} · Cuadre</title>
+<link rel="stylesheet" href="/static/css/cuadre.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f5666'/><text y='72' x='50' text-anchor='middle' font-size='62' font-family='system-ui' font-weight='700' fill='white'>C</text></svg>">
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark">C</span>
+      <span>
+        <span class="brand-name">Cuadre</span><br>
+        <span class="brand-sub">Conciliaciones</span>
+      </span>
+    </a>
+
+    <nav class="nav-group">
+      <div class="nav-label">Trabajo</div>
+      <a class="nav-item {{ 'active' if active == 'home' }}" href="/">
+        {{ icon('inbox') }} Bandeja
+        {% if counts.trabajo %}<span class="count">{{ counts.trabajo }}</span>{% endif %}
+      </a>
+      <a class="nav-item {{ 'active' if active == 'periodos' }}" href="/periodos">
+        {{ icon('calendar') }} Períodos
+      </a>
+      <a class="nav-item {{ 'active' if active == 'clientes' }}" href="/clientes">
+        {{ icon('users') }} Cartera
+      </a>
+    </nav>
+
+    <nav class="nav-group">
+      <div class="nav-label">Evidencia</div>
+      <a class="nav-item {{ 'active' if active == 'correcciones' }}" href="/correcciones">
+        {{ icon('edit') }} Correcciones
+      </a>
+      <a class="nav-item {{ 'active' if active == 'bitacora' }}" href="/bitacora">
+        {{ icon('activity') }} Bitácora
+      </a>
+      <a class="nav-item {{ 'active' if active == 'consumo' }}" href="/consumo">
+        {{ icon('cpu') }} Consumo de modelos
+      </a>
+    </nav>
+
+    {% if tenant and tenant.role in ('ADMIN', 'REVIEWER') %}
+    <nav class="nav-group">
+      <div class="nav-label">Firma</div>
+      <a class="nav-item {{ 'active' if active == 'equipo' }}" href="/equipo">
+        {{ icon('users') }} Equipo
+      </a>
+    </nav>
+    {% endif %}
+
+    <div class="sidebar-foot">
+      {% if user %}
+      <div class="user-chip">
+        <span class="avatar">{{ user.name | iniciales }}</span>
+        <span style="min-width:0">
+          <div class="small" style="font-weight:600; overflow:hidden; text-overflow:ellipsis">{{ user.name }}</div>
+          <div class="small muted">{{ Role(user.role).label }}</div>
+        </span>
+      </div>
+      <div class="row" style="margin-top:10px; gap:6px">
+        <button class="btn btn-ghost btn-sm" type="button" data-theme-toggle title="Cambiar tema">
+          {{ icon('sun', 14) }}
+        </button>
+        <a class="btn btn-ghost btn-sm" href="/salir">{{ icon('logout', 14) }} Salir</a>
+      </div>
+      {% endif %}
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
+      <span class="spacer"></span>
+      {% block topactions %}{% endblock %}
+    </header>
+    <main class="content">{% block content %}{% endblock %}</main>
+  </div>
+</div>
+
+{% if flashes %}
+<div class="flashes" id="flashes">
+  {% for flash in flashes %}<div class="flash {{ flash.level }}">{{ flash.text }}</div>{% endfor %}
+</div>
+{% endif %}
+<script src="/static/js/cuadre.js"></script>

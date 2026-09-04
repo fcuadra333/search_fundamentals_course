@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Cartera{% endblock %}
+{% block crumbs %}<span>Cartera de clientes</span>{% endblock %}
+{% block content %}
+<div class="page-head"><div>
+  <h1>Cartera</h1>
+  <div class="sub">{{ rows | length }} cliente(s) en la firma.</div>
+</div></div>
+<div class="card"><div class="card-body tight">
+  {% if not rows %}<div class="empty"><div class="big">Sin clientes todavía</div></div>{% else %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Código</th><th>Cliente</th><th class="num">Entidades</th>
+      <th class="num">Cuentas bancarias</th><th>Contacto</th><th></th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td class="mono">{{ row.client.code }}</td>
+        <td><div class="cell-title">{{ row.client.name }}</div>
+            <div class="cell-sub">{{ row.entities | map(attribute='name') | join(' · ') }}</div></td>
+        <td class="num">{{ row.entities | length }}</td>
+        <td class="num">{{ row.accounts }}</td>
+        <td class="small muted">{{ row.client.contact_email or '—' }}</td>
+        <td class="right"><a class="btn btn-sm" href="/clientes/{{ row.client.id }}">Abrir</a></td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+  {% endif %}
+</div></div>
+{% endblock %}
