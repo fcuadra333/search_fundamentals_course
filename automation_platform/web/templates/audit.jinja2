@@ -1,0 +1,37 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('audit.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('audit.title') }}</h1>
+    <p>{{ t('audit.subtitle') }}</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    {% if entries %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{{ t('common.created_at') }}</th><th>{{ t('audit.action') }}</th>
+            <th>{{ t('audit.entity') }}</th><th>{{ t('common.detail') }}</th>
+          </tr></thead>
+          <tbody>
+          {% for row in entries %}
+            <tr>
+              <td class="cell-sub">{{ row['created_at'] | stamp }}</td>
+              <td><span class="pill">{{ row['action'] }}</span></td>
+              <td class="cell-sub mono">{{ row['entity'] }} {{ row['entity_id'] | short(10) }}</td>
+              <td class="cell-sub mono">{{ row['payload_json'] }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}{{ ui.empty('audit.empty') }}{% endif %}
+  </div>
+</div>
+{% endblock %}

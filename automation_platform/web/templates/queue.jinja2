@@ -1,0 +1,89 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('queue.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('queue.title') }}</h1>
+    <p>{{ t('queue.subtitle') }}</p>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body">
+    <form method="get" class="form-row">
+      <div class="field">
+        <label for="job_role_id">{{ t('queue.filter_job_role') }}</label>
+        <select id="job_role_id" name="job_role_id">
+          <option value="">{{ t('common.all') }}</option>
+          {% for row in job_roles %}
+            <option value="{{ row['id'] }}" {{ 'selected' if request.args.get('job_role_id') == row['id'] }}>{{ row['name'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="process_id">{{ t('queue.filter_process') }}</label>
+        <select id="process_id" name="process_id">
+          <option value="">{{ t('common.all') }}</option>
+          {% for row in processes %}
+            <option value="{{ row['id'] }}" {{ 'selected' if request.args.get('process_id') == row['id'] }}>{{ row['name'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="user_id">{{ t('queue.filter_person') }}</label>
+        <select id="user_id" name="user_id">
+          <option value="">{{ t('common.all') }}</option>
+          {% for row in users %}
+            <option value="{{ row['id'] }}" {{ 'selected' if request.args.get('user_id') == row['id'] }}>{{ row['display_name'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">{{ t('common.status') }}</label>
+        <select id="status" name="status">
+          <option value="">{{ t('common.all') }}</option>
+          {% for status in all_statuses %}
+            <option value="{{ status.value }}" {{ 'selected' if status.value in statuses }}>{{ t(status.label_key) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn primary" type="submit">{{ t('action.filter') }}</button>
+      <a class="btn ghost" href="{{ url_for('main.queue') }}">{{ t('action.clear_filters') }}</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    {% if executions %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{{ t('common.skill') }}</th><th>{{ t('common.status') }}</th>
+            <th>{{ t('common.trigger') }}</th><th class="num">{{ t('common.duration') }}</th>
+            <th class="num">{{ t('common.cost') }}</th><th>{{ t('common.created_at') }}</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for row in executions %}
+            <tr>
+              <td>
+                <span class="cell-main">{{ skill_names.get(row['skill_id'], t('common.process')) }}</span>
+                <div class="cell-sub mono">{{ row['id'] | short(10) }}{% if not row['effects_enabled'] %} · {{ t('enum.Trigger.dry_run') }}{% endif %}</div>
+              </td>
+              <td>{{ ui.execution_status(row['status']) }}</td>
+              <td><span class="pill">{{ t('enum.Trigger.' ~ row['trigger']) }}</span></td>
+              <td class="num">{{ row['duration_ms'] | duration }}</td>
+              <td class="num">{{ row['cost_usd'] | money }}</td>
+              <td class="cell-sub">{{ row['created_at'] | stamp }}</td>
+              <td><a class="btn small" href="{{ url_for('main.execution_detail', execution_id=row['id']) }}">{{ t('action.details') }}</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}{{ ui.empty('queue.empty') }}{% endif %}
+  </div>
+</div>
+{% endblock %}

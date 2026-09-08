@@ -1,0 +1,77 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('process.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('process.title') }}</h1>
+    <p>{{ t('process.subtitle') }}</p>
+  </div>
+</div>
+
+<div class="notice info">{{ t('process.anchor_hint') }}</div>
+
+{% if processes %}
+  <div class="grid">
+    {% for row in processes %}
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>{{ row['name'] }}</h2>
+            <div class="cell-sub">{{ row['description'] }}
+              {% if row['job_role_id'] %} · {{ job_roles.get(row['job_role_id'], {'name': ''})['name'] }}{% endif %}</div>
+          </div>
+          <div class="page-actions">
+            {% if row['stopped'] %}<span class="pill danger">{{ t('killswitch.engaged') }}</span>{% endif %}
+            <form class="inline-form" method="post" action="{{ url_for('main.run_process', process_id=row['id']) }}">
+              <button class="btn primary small" type="submit"
+                      {{ 'disabled' if row['stopped'] or not has_permission('process.run') }}>{{ t('action.run') }}</button>
+            </form>
+            <form class="inline-form" method="post" action="{{ url_for('main.stop_process', process_id=row['id']) }}">
+              <input type="hidden" name="stopped" value="{{ 'off' if row['stopped'] else 'on' }}">
+              <button class="btn small {{ 'danger' if not row['stopped'] }}" type="submit"
+                      {{ 'disabled' if not has_permission('process.stop') }}>
+                {{ t('action.resume') if row['stopped'] else t('action.stop') }}
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid cols-2">
+            <div>
+              <h3>{{ t('process.nodes') }}</h3>
+              <table class="data" style="margin-top:8px">
+                <tbody>
+                {% for node in nodes.get(row['id'], []) %}
+                  <tr>
+                    <td class="mono cell-sub">{{ node['node_key'] }}</td>
+                    <td><a href="{{ url_for('main.skill_detail', skill_id=node['skill_id']) }}">
+                      {{ skill_names.get(node['skill_id'], '') }}</a></td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h3>{{ t('process.edges') }}</h3>
+              <table class="data" style="margin-top:8px">
+                <tbody>
+                {% for edge in edges.get(row['id'], []) %}
+                  <tr>
+                    <td class="mono cell-sub">{{ edge['from_node_key'] or '·' }} → {{ edge['to_node_key'] }}</td>
+                    <td class="mono cell-sub">{{ edge['data_mapping_json'] if edge['data_mapping_json'] != '{}' else '—' }}</td>
+                  </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card"><div class="card-body">{{ ui.empty('process.empty') }}</div></div>
+{% endif %}
+{% endblock %}

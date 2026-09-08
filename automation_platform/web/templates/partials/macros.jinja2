@@ -1,0 +1,64 @@
+{# Shared display macros. They translate through `t`, never hard-code text. #}
+
+{% macro status_pill(status) %}
+  {% set kinds = {
+      'succeeded': 'ok', 'running': 'info', 'queued': '', 'waiting_approval': 'warn',
+      'failed': 'danger', 'escalated': 'warn', 'stopped': 'danger',
+      'published': 'ok', 'draft': '', 'in_certification': 'info', 'needs_review': 'warn',
+      'passed': 'ok', 'fragile': 'warn', 'approved': 'ok', 'rejected': 'danger',
+      'pending': 'warn', 'expired': '', 'retried': 'warn', 'skipped': '',
+      'healthy': 'ok', 'version_changed': 'warn', 'unreachable': 'danger'
+  } %}
+  <span class="pill {{ kinds.get(status, '') }}"><span class="dot"></span>{{ caller() if caller else status }}</span>
+{% endmacro %}
+
+{% macro execution_status(status) %}
+  {% call status_pill(status) %}{{ t('enum.ExecutionStatus.' ~ status) }}{% endcall %}
+{% endmacro %}
+
+{% macro skill_status(status) %}
+  {% call status_pill(status) %}{{ t('enum.SkillStatus.' ~ status) }}{% endcall %}
+{% endmacro %}
+
+{% macro risk_pill(risk) %}
+  {% set kinds = {'read_only': 'ok', 'reversible_write': 'info', 'irreversible_write': 'danger'} %}
+  <span class="pill {{ kinds.get(risk, '') }}">{{ t('enum.RiskClass.' ~ risk) }}</span>
+{% endmacro %}
+
+{# The three-screen budget, drawn. The constraint is the product, so it is
+   visible on every skill rather than buried in a field. #}
+{% macro screen_meter(count) %}
+  <span class="screens" title="{{ t('skill.screens_used', count=count) }}">
+    {% for index in range(3) %}
+      <span class="screen-box {{ 'is-used' if index < count and count <= 3 else '' }} {{ 'is-over' if count > 3 else '' }}"></span>
+    {% endfor %}
+    <span class="cell-sub">{{ t('skill.screens_used', count=count) }}</span>
+  </span>
+{% endmacro %}
+
+{% macro rate_bar(value, invert=false) %}
+  {% set percent = (value * 100) | round(1) %}
+  {% set kind = 'is-danger' if (invert and value > 0.2) or (not invert and value < 0.8)
+                 else ('is-warn' if (invert and value > 0.05) or (not invert and value < 0.95) else 'is-ok') %}
+  <div class="bar {{ kind }}"><span style="width: {{ [percent, 100] | min }}%"></span></div>
+{% endmacro %}
+
+{# A skipped layer is shown, not hidden: "this layer had nothing to check" is
+   different information from "this layer passed". #}
+{% macro layer_pill(entry) %}
+  {% if entry.skipped %}
+    <span class="pill" title="{{ t(entry.detail_key) }}">{{ t('enum.ValidationLayer.' ~ entry.layer) }}</span>
+  {% else %}
+    <span class="pill {{ 'ok' if entry.passed else 'danger' }}" title="{{ t(entry.detail_key) }}">
+      <span class="dot"></span>{{ t('enum.ValidationLayer.' ~ entry.layer) }}
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{% macro measurement_note(measurement) %}
+  <span class="pill {{ 'info' if measurement == 'measured' else '' }}">{{ t('enum.Measurement.' ~ measurement) }}</span>
+{% endmacro %}
+
+{% macro empty(key='common.empty') %}
+  <div class="empty">{{ t(key) }}</div>
+{% endmacro %}

@@ -1,0 +1,67 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('skill.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('skill.title') }}</h1>
+    <p>{{ t('skill.subtitle') }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('main.training') }}">{{ t('action.record') }}</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-body">
+    <form method="get" class="form-row">
+      <div class="field">
+        <label for="status">{{ t('common.status') }}</label>
+        <select id="status" name="status" onchange="this.form.submit()">
+          <option value="">{{ t('common.all') }}</option>
+          {% for status in statuses %}
+            <option value="{{ status.value }}" {{ 'selected' if request.args.get('status') == status.value }}>{{ t(status.label_key) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    {% if skills %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{{ t('common.name') }}</th><th>{{ t('common.executor') }}</th>
+            <th>{{ t('common.application') }}</th><th>{{ t('common.screens') }}</th>
+            <th>{{ t('common.risk') }}</th><th>{{ t('common.status') }}</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for row in skills %}
+            <tr>
+              <td>
+                <a class="cell-main" href="{{ url_for('main.skill_detail', skill_id=row['id']) }}">{{ row['name'] }}</a>
+                <div class="cell-sub">
+                  {{ row['description'] }}
+                  {% if row['fragile'] %}<span class="pill warn">{{ t('common.fragile') }}</span>{% endif %}
+                  {% if row['stopped'] %}<span class="pill danger">{{ t('common.stopped') }}</span>{% endif %}
+                </div>
+              </td>
+              <td><span class="pill">{{ t('enum.Executor.' ~ row['executor']) }}</span></td>
+              <td class="cell-sub">{{ applications.get(row['application_id'], {'name': '—'})['name'] if row['application_id'] else '—' }}</td>
+              <td>{{ ui.screen_meter(screen_counts.get(row['id'], 1)) }}</td>
+              <td>{{ ui.risk_pill(row['risk_classification']) }}</td>
+              <td>{{ ui.skill_status(row['status']) }}</td>
+              <td><a class="btn small" href="{{ url_for('main.skill_detail', skill_id=row['id']) }}">{{ t('action.details') }}</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}{{ ui.empty('skill.empty') }}{% endif %}
+  </div>
+</div>
+{% endblock %}

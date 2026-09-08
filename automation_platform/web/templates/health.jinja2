@@ -1,0 +1,82 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('health.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('health.title') }}</h1>
+    <p>{{ t('health.subtitle') }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('main.export', fmt='xlsx') }}">{{ t('export.excel') }}</a>
+  </div>
+</div>
+
+{% for alert in alerts %}
+  <div class="notice warn">
+    <strong>{{ alert.application }}</strong>
+    {{ t('health.application_alert', application=alert.application) }}
+  </div>
+{% endfor %}
+
+<div class="grid cols-3" style="margin-bottom:16px">
+  <div class="card metric">
+    <div class="metric-label">{{ t('dashboard.intervention_rate') }}</div>
+    <div class="metric-value">{{ summary.intervention_rate | percent }}</div>
+    {{ ui.rate_bar(summary.intervention_rate, invert=true) }}
+  </div>
+  <div class="card metric">
+    <div class="metric-label">{{ t('dashboard.success_rate') }}</div>
+    <div class="metric-value">{{ summary.success_rate | percent }}</div>
+    {{ ui.rate_bar(summary.success_rate) }}
+  </div>
+  <div class="card metric">
+    <div class="metric-label">{{ t('health.executions') }}</div>
+    <div class="metric-value">{{ summary.executions }}</div>
+    <div class="metric-note">{{ t('economics.measurement_note') }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body tight">
+    {% if entries %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr>
+            <th>{{ t('common.skill') }}</th><th class="num">{{ t('health.executions') }}</th>
+            <th>{{ t('health.success_rate') }}</th><th>{{ t('health.intervention_rate') }}</th>
+            <th class="num">{{ t('health.degradations') }}</th><th class="num">{{ t('health.drift_detections') }}</th>
+            <th class="num">{{ t('health.avg_cost') }}</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for entry in entries %}
+            <tr>
+              <td>
+                <a class="cell-main" href="{{ url_for('main.skill_detail', skill_id=entry.skill_id) }}">{{ entry.name }}</a>
+                <div class="cell-sub">
+                  {{ ui.skill_status(entry.status) }}
+                  {% if entry.fragile %}<span class="pill warn">{{ t('common.fragile') }}</span>{% endif %}
+                </div>
+              </td>
+              <td class="num">{{ entry.executions }}</td>
+              <td style="min-width:120px">
+                {{ entry.success_rate | percent }}{{ ui.rate_bar(entry.success_rate) }}
+              </td>
+              <td style="min-width:120px">
+                {{ entry.intervention_rate | percent }}{{ ui.rate_bar(entry.intervention_rate, invert=true) }}
+              </td>
+              <td class="num">{{ entry.degradations }}</td>
+              <td class="num">{{ entry.drift_detections }}</td>
+              <td class="num">{{ entry.avg_cost_usd | money }}</td>
+              <td><span class="pill {{ 'danger' if entry.trend_key == 'health.trend_rising' else '' }}">{{ t(entry.trend_key) }}</span></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}{{ ui.empty('health.empty') }}{% endif %}
+  </div>
+  <div class="card-foot">{{ t('dashboard.intervention_hint') }}</div>
+</div>
+{% endblock %}

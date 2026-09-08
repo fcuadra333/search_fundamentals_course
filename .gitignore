@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Automation platform: local database and generated evidence exports
+var/
+automation_platform/**/__pycache__/

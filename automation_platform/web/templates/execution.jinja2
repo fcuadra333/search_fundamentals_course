@@ -1,0 +1,178 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('execution.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ skill['name'] if skill else (process['name'] if process else t('execution.title')) }}</h1>
+    <p>{{ t('execution.subtitle') }}</p>
+    <div class="tag-list" style="margin-top:8px">
+      {{ ui.execution_status(execution['status']) }}
+      <span class="pill">{{ t('enum.Trigger.' ~ execution['trigger']) }}</span>
+      <span class="pill mono">{{ execution['id'] }}</span>
+      {% if not execution['effects_enabled'] %}<span class="pill info">{{ t('execution.dry_run_notice') }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('main.export', fmt='pdf') }}">{{ t('export.pdf') }}</a>
+    <a class="btn ghost" href="{{ url_for('main.queue') }}">{{ t('action.back') }}</a>
+  </div>
+</div>
+
+{% if execution['status'] == 'escalated' %}
+  <div class="notice warn"><strong>{{ t('enum.ExecutionStatus.escalated') }}</strong>
+    {{ t('execution.escalated_notice') }}
+    {% if execution['error_code'] %} · {{ t(execution['error_code']) }}{% endif %}
+  </div>
+{% elif execution['status'] == 'stopped' %}
+  <div class="notice danger"><strong>{{ t('enum.ExecutionStatus.stopped') }}</strong>{{ t('execution.stopped_notice') }}</div>
+{% elif execution['status'] == 'waiting_approval' %}
+  <div class="notice warn"><strong>{{ t('enum.ExecutionStatus.waiting_approval') }}</strong>
+    {{ t('error.approval_required') }} · <a href="{{ url_for('main.approvals') }}">{{ t('approval.decide') }}</a>
+  </div>
+{% endif %}
+
+<div class="grid side">
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t('execution.timeline') }}</h2>
+      <span class="hint">{{ t('execution.screen_content_notice') }}</span>
+    </div>
+    <div class="card-body tight">
+      {% if steps %}
+        <div class="timeline">
+          {% for item in steps %}
+            <div class="step {{ item.row['status'] }}">
+              <div class="step-index">{{ item.row['position'] }}</div>
+              <div>
+                <div class="step-head">
+                  <span class="step-title">
+                    {{ t('enum.ActionType.' ~ item.action.type) if item.action.type else t('common.step') }}
+                  </span>
+                  {% call ui.status_pill(item.row['status']) %}{{ t('enum.StepStatus.' ~ item.row['status']) }}{% endcall %}
+                  <span class="step-meta">{{ t('common.screen') }} {{ item.row['screen_index'] + 1 }}</span>
+                  <span class="step-meta">{{ item.row['duration_ms'] | duration }}</span>
+                  {% if item.row['attempts'] > 1 %}
+                    <span class="pill warn">{{ t('common.attempts') }} {{ item.row['attempts'] }}</span>
+                  {% endif %}
+                  {% if item.row['selector_tier_used'] %}
+                    <span class="pill {{ 'warn' if item.row['selector_tier_used'] == 5 }}">
+                      {{ t('common.selector') }} {{ item.row['selector_tier_used'] }}
+                    </span>
+                  {% endif %}
+                </div>
+
+                {% if item.action.value %}
+                  <div class="cell-sub">{{ t('common.parameters') }}: <span class="mono">{{ item.action.value }}</span></div>
+                {% endif %}
+
+                <div class="evidence">
+                  <div class="shot">
+                    <div class="shot-label">{{ t('execution.evidence_before') }}</div>
+                    <div class="shot-ref">{{ item.row['screenshot_before'] or '—' }}</div>
+                  </div>
+                  <div class="shot">
+                    <div class="shot-label">{{ t('execution.evidence_after') }}</div>
+                    <div class="shot-ref">{{ item.row['screenshot_after'] or '—' }}</div>
+                  </div>
+                </div>
+
+                {% if item.verification %}
+                  <div class="layers">
+                    {% for entry in item.verification %}{{ ui.layer_pill(entry) }}{% endfor %}
+                  </div>
+                {% endif %}
+                {% for entry in item.verification %}
+                  {% if entry.detail_key == 'execution.suspicious_content' %}
+                    <div class="notice {{ 'danger' if entry.detail_params.severity == 'high' else 'warn' }}" style="margin-top:9px">
+                      <strong>{{ t('execution.suspicious_content') }}</strong>
+                      {% for line in entry.detail_params.matches or [] %}<div class="mono">{{ line }}</div>{% endfor %}
+                    </div>
+                  {% endif %}
+                {% endfor %}
+                {% if item.row['detail'] %}
+                  <div class="cell-sub" style="margin-top:6px">{{ t(item.row['detail']) }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}{{ ui.empty('execution.no_steps') }}{% endif %}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('economics.title') }}</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>{{ t('common.cost') }}</dt>
+          <dd>{{ execution['cost_usd'] | money }} USD {{ ui.measurement_note(execution['cost_measurement']) }}</dd>
+          <dt>{{ t('common.tokens') }}</dt>
+          <dd>{{ execution['input_tokens'] }} / {{ execution['output_tokens'] }}</dd>
+          <dt>{{ t('common.duration') }}</dt><dd>{{ execution['duration_ms'] | duration }}</dd>
+          <dt>{{ t('common.started_at') }}</dt><dd class="cell-sub">{{ execution['started_at'] | stamp }}</dd>
+          <dt>{{ t('common.finished_at') }}</dt><dd class="cell-sub">{{ execution['finished_at'] | stamp or '—' }}</dd>
+        </dl>
+      </div>
+      <div class="card-foot">{{ t('economics.measurement_note') }}</div>
+    </div>
+
+    {% if trace %}
+      <div class="card">
+        <div class="card-head"><h2>{{ t('execution.validation_layers') }}</h2></div>
+        <div class="card-body">
+          <table class="data">
+            <tbody>
+            {% for entry in trace %}
+              <tr>
+                <td>{{ t('enum.ValidationLayer.' ~ entry.layer) }}</td>
+                <td style="text-align:right">
+                  {% if entry.skipped %}<span class="pill">—</span>
+                  {% else %}<span class="pill {{ 'ok' if entry.passed else 'danger' }}">{{ t('common.yes') if entry.passed else t('common.no') }}</span>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if children %}
+      <div class="card">
+        <div class="card-head"><h2>{{ t('process.nodes') }}</h2></div>
+        <div class="card-body tight">
+          <table class="data">
+            <tbody>
+            {% for row in children %}
+              <tr>
+                <td><a href="{{ url_for('main.execution_detail', execution_id=row['id']) }}">
+                  {{ skill_names.get(row['skill_id'], row['node_key'] or '') }}</a></td>
+                <td style="text-align:right">{{ ui.execution_status(row['status']) }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if approvals %}
+      <div class="card">
+        <div class="card-head"><h2>{{ t('approval.title') }}</h2></div>
+        <div class="card-body">
+          {% for row in approvals %}
+            <div style="margin-bottom:10px">
+              {% call ui.status_pill(row['status']) %}{{ t('enum.ApprovalStatus.' ~ row['status']) }}{% endcall %}
+              <div class="cell-sub">{{ row['proposed_action'] }}</div>
+              {% if row['comment'] %}<div class="cell-sub">{{ row['comment'] }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

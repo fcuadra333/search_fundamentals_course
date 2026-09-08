@@ -1,0 +1,5 @@
+# The platform's only runtime dependency. Everything else — the database, the
+# XLSX and PDF writers, the condition evaluator, the i18n layer — is the
+# standard library, on purpose: an operations console that supervises agents
+# acting on a company's systems should have as little supply chain as possible.
+flask>=3.0

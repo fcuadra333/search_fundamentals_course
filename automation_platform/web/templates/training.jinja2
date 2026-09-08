@@ -1,0 +1,92 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('training.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('training.title') }}</h1>
+    <p>{{ t('training.subtitle') }}</p>
+  </div>
+</div>
+
+<div class="grid side">
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('training.proposals') }}</h2>
+        <span class="hint">{{ t('training.review_required') }}</span></div>
+      <div class="card-body tight">
+        {% if proposals %}
+          <table class="data">
+            <thead><tr><th>{{ t('common.name') }}</th><th>{{ t('common.screens') }}</th>
+              <th>{{ t('common.risk') }}</th><th>{{ t('common.status') }}</th><th></th></tr></thead>
+            <tbody>
+            {% for item in proposals %}
+              <tr>
+                <td>
+                  <span class="cell-main">{{ item.proposal.name or '—' }}</span>
+                  <div class="cell-sub mono">{{ item.proposal.start_anchor }}</div>
+                </td>
+                <td>{{ ui.screen_meter(item.proposal.screen_count or 1) }}</td>
+                <td>{{ ui.risk_pill(item.proposal.risk_classification or 'read_only') }}</td>
+                <td>
+                  {% if item.row['reviewed_by'] %}
+                    <span class="pill ok">{{ t('training.reviewed_by', user='') }}</span>
+                  {% else %}
+                    <span class="pill warn">{{ t('training.pending_review') }}</span>
+                  {% endif %}
+                </td>
+                <td><a class="btn small" href="{{ url_for('main.proposal_detail', proposal_id=item.row['id']) }}">{{ t('action.review') }}</a></td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}{{ ui.empty('training.empty') }}{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('training.demonstrations') }}</h2></div>
+      <div class="card-body tight">
+        {% if demonstrations %}
+          <table class="data">
+            <tbody>
+            {% for row in demonstrations %}
+              <tr>
+                <td><span class="cell-main">{{ row['title'] or row['id'] }}</span>
+                    <div class="cell-sub">{{ row['created_at'] | stamp }}</div></td>
+                <td style="text-align:right" class="cell-sub mono">{{ row['id'] | short(10) }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}{{ ui.empty('training.empty') }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{{ t('action.record') }}</h2></div>
+    <div class="card-body">
+      <p class="cell-sub">{{ t('training.subtitle') }}</p>
+      <form method="post" action="{{ url_for('main.record_demonstration') }}">
+        <div class="field">
+          <label for="application_id">{{ t('common.application') }}</label>
+          <select id="application_id" name="application_id">
+            {% for row in applications %}
+              <option value="{{ row['id'] }}">{{ row['name'] }} · {{ row['detected_version'] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="name">{{ t('common.name') }}</label>
+          <input type="text" id="name" name="name">
+        </div>
+        <button class="btn primary" type="submit" {{ 'disabled' if not has_permission('training.record') }}>
+          {{ t('action.record') }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

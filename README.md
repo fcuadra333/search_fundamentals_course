@@ -5,6 +5,14 @@ quickly get up to speed on search by teaching the basics of search like indexing
 
 The class is a hands-on project-driven course where students will work with real data and the [Opensearch](https://opensearch.com)/Elasticsearch ecosystem.
 
+# Plataforma de automatización de tareas de escritorio
+
+This repository also hosts `automation_platform/`, a self-contained desktop task
+automation platform: multi-tenant, bilingual (Spanish/English), with a
+three-screen ceiling per skill, mandatory certification and an approval queue for
+irreversible writes. It is independent of the search course above — see
+[`automation_platform/README.md`](automation_platform/README.md) to run it.
+
 # Class code layout (e.g. where the projects are)
 
 For our class, we have two weekly projects.  Each project

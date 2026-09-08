@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ t('app.name') }}{% endblock %} · {{ t('app.name') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232f5fd0'/><text x='16' y='22' font-size='16' text-anchor='middle' fill='white' font-family='sans-serif'>A</text></svg>">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-name">{{ t('app.name') }}</span>
+        <span class="brand-sub">{{ t('app.tagline') }}</span>
+      </div>
+    </div>
+
+    {% set nav = [
+      ('nav.section_operate', [
+        ('main.dashboard', 'nav.dashboard', none),
+        ('main.queue', 'nav.queue', queue_total),
+        ('main.approvals', 'nav.approvals', approval_total),
+      ]),
+      ('nav.section_build', [
+        ('main.skills', 'nav.skills', none),
+        ('main.processes', 'nav.processes', none),
+        ('main.training', 'nav.training', none),
+      ]),
+      ('nav.section_govern', [
+        ('main.health', 'nav.health', none),
+        ('main.applications', 'nav.applications', none),
+        ('main.job_roles', 'nav.job_roles', none),
+        ('main.audit', 'nav.audit', none),
+      ]),
+    ] %}
+
+    {% for label, items in nav %}
+      <nav class="nav-group">
+        <div class="nav-label">{{ t(label) }}</div>
+        {% for endpoint, key, count in items %}
+          <a class="nav-item {{ 'is-active' if request.endpoint == endpoint }}" href="{{ url_for(endpoint) }}">
+            <span>{{ t(key) }}</span>
+            {% if count %}<span class="nav-count {{ 'is-alert' if key == 'nav.approvals' }}">{{ count }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      </nav>
+    {% endfor %}
+
+    <div class="sidebar-footer">{{ t('app.footer') }}</div>
+  </aside>
+
+  <div>
+    <header class="topbar">
+      <div class="topbar-org">
+        <span class="org-chip">
+          <span class="org-dot {{ 'is-stopped' if organization and organization['stopped'] }}"></span>
+          {{ organization['name'] if organization }}
+        </span>
+        {% if organization and organization['stopped'] %}
+          <span class="pill danger">{{ t('killswitch.engaged') }}</span>
+        {% endif %}
+      </div>
+      <div class="topbar-tools">
+        <div class="lang-switch" role="group" aria-label="{{ t('common.language') }}">
+          {% for code in locales %}
+            <a class="{{ 'is-active' if code == locale }}" href="{{ url_for('auth.language', locale=code) }}">{{ code | upper }}</a>
+          {% endfor %}
+        </div>
+        {% if current_user %}
+          <div class="user-chip">
+            <div class="avatar">{{ current_user['display_name'][:1] | upper }}</div>
+            <div class="user-meta">
+              <span class="user-name">{{ current_user['display_name'] }}</span>
+              <span class="user-role">{{ t('enum.Role.' ~ current_user['role']) }}</span>
+            </div>
+          </div>
+          <a class="btn ghost small" href="{{ url_for('auth.logout') }}">{{ t('action.leave') }}</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="notice {{ {'success': 'ok', 'warning': 'warn', 'error': 'danger'}.get(category, 'info') }}">
+            {{ t(message) }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      {% if organization and organization['stopped'] %}
+        <div class="notice danger">
+          <strong>{{ t('killswitch.engaged') }}</strong>
+          {{ t('dashboard.stopped_banner', reason=organization['stopped_reason'] or '—') }}
+        </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>

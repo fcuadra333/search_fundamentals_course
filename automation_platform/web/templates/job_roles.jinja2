@@ -1,0 +1,56 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('job_role.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('job_role.title') }}</h1>
+    <p>{{ t('job_role.subtitle') }}</p>
+  </div>
+</div>
+
+{% if job_roles %}
+  <div class="grid cols-2">
+    {% for row in job_roles %}
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>{{ row['name'] }}</h2>
+            <div class="cell-sub">{{ row['description'] }}</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <dl class="kv">
+            <dt>{{ t('job_role.inputs') }}</dt>
+            <dd><div class="tag-list">
+              {% for item in row['inputs_json'] | fromjson %}<span class="pill">{{ item }}</span>{% endfor %}
+            </div></dd>
+            <dt>{{ t('job_role.outputs') }}</dt>
+            <dd><div class="tag-list">
+              {% for item in row['outputs_json'] | fromjson %}<span class="pill">{{ item }}</span>{% endfor %}
+            </div></dd>
+            <dt>{{ t('job_role.approver') }}</dt>
+            <dd>{{ users.get(row['approver_user_id'], {'display_name': '—'})['display_name'] if row['approver_user_id'] else '—' }}</dd>
+          </dl>
+          <h3 style="margin-top:14px">{{ t('nav.skills') }}</h3>
+          <table class="data" style="margin-top:8px">
+            <tbody>
+            {% for skill in skills.get(row['id'], []) %}
+              <tr>
+                <td><a href="{{ url_for('main.skill_detail', skill_id=skill['id']) }}">{{ skill['name'] }}</a></td>
+                <td style="text-align:right">{{ ui.risk_pill(skill['risk_classification']) }}</td>
+              </tr>
+            {% else %}
+              <tr><td class="cell-sub">{{ t('common.none') }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card"><div class="card-body">{{ ui.empty('job_role.empty') }}</div></div>
+{% endif %}
+{% endblock %}

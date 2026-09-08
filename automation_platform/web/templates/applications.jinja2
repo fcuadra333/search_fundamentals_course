@@ -1,0 +1,57 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('application.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('application.title') }}</h1>
+    <p>{{ t('application.subtitle') }}</p>
+  </div>
+</div>
+
+{% if applications %}
+  <div class="grid cols-2">
+    {% for row in applications %}
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>{{ row['name'] }}</h2>
+            <div class="cell-sub">{{ t('application.detected_version') }}: <span class="mono">{{ row['detected_version'] or '—' }}</span></div>
+          </div>
+          {% call ui.status_pill(row['health_status']) %}{{ t('enum.ApplicationHealth.' ~ row['health_status']) }}{% endcall %}
+        </div>
+        <div class="card-body">
+          <h3>{{ t('application.skills_bound') }}</h3>
+          <table class="data" style="margin-top:8px">
+            <tbody>
+            {% for skill in skills.get(row['id'], []) %}
+              <tr>
+                <td><a href="{{ url_for('main.skill_detail', skill_id=skill['id']) }}">{{ skill['name'] }}</a></td>
+                <td style="text-align:right">{{ ui.skill_status(skill['status']) }}</td>
+              </tr>
+            {% else %}
+              <tr><td class="cell-sub">{{ t('common.none') }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+
+          <form method="post" action="{{ url_for('main.change_version', application_id=row['id']) }}"
+                class="form-row" style="margin-top:14px">
+            <div class="field">
+              <label for="version-{{ row['id'] }}">{{ t('application.detected_version') }}</label>
+              <input type="text" id="version-{{ row['id'] }}" name="version" value="{{ row['detected_version'] }}">
+            </div>
+            <button class="btn" type="submit" {{ 'disabled' if not has_permission('organization.manage') }}>
+              {{ t('action.save') }}
+            </button>
+          </form>
+          <p class="footnote">{{ t('certification.app_version_changed') }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card"><div class="card-body">{{ ui.empty('application.empty') }}</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('training.proposals') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('training.proposal_for', title=demonstration['title'] if demonstration else '') }}</h1>
+    <p>{{ t('training.review_required') }}</p>
+  </div>
+  <div class="page-actions">
+    {% if row['reviewed_by'] %}
+      <form class="inline-form" method="post" action="{{ url_for('main.accept_proposal', proposal_id=row['id']) }}">
+        <button class="btn primary" type="submit">{{ t('action.accept_proposal') }}</button>
+      </form>
+    {% else %}
+      <span class="pill warn">{{ t('training.pending_review') }}</span>
+    {% endif %}
+  </div>
+</div>
+
+{% for note in notes %}
+  <div class="notice {{ 'warn' if note.key == 'training.note_screen_limit' else 'info' }}">
+    {{ t(note.key, screens=note.screens or 0, parts=note.parts or 1, count=note.event or 0) }}
+  </div>
+{% endfor %}
+
+{% if split %}
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head"><h2>{{ t('skill.split_suggestion') }}</h2>
+      <span class="hint">{{ t('skill.split_hint', screens=proposal.screen_count, parts=proposal.suggested_parts) }}</span></div>
+    <div class="card-body">
+      {% for part in split %}
+        <div class="split-part">
+          <strong>{{ t('common.skill') }} {{ part.index }}</strong>
+          <div class="tag-list" style="margin-top:6px">
+            {% for screen in part.screens %}<span class="pill mono">{{ screen }}</span>{% endfor %}
+          </div>
+          <div class="cell-sub" style="margin-top:6px">{{ part.steps | length }} {{ t('common.steps') | lower }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid side">
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('action.review') }}</h2>
+        {{ ui.screen_meter(proposal.screen_count or 1) }}</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('main.review_proposal', proposal_id=row['id']) }}">
+          <div class="field">
+            <label for="name">{{ t('common.name') }}</label>
+            <input type="text" id="name" name="name" value="{{ proposal.name }}">
+          </div>
+          <div class="field">
+            <label for="precondition">{{ t('common.precondition') }}</label>
+            <textarea id="precondition" name="precondition">{{ proposal.precondition }}</textarea>
+          </div>
+          <div class="field">
+            <label for="postcondition">{{ t('common.postcondition') }} <span class="help">({{ t('common.required') }})</span></label>
+            <textarea id="postcondition" name="postcondition">{{ proposal.postcondition }}</textarea>
+            <span class="help">{{ t('error.missing_postcondition') }}</span>
+          </div>
+          <div class="field">
+            <label for="semantic_check">{{ t('enum.ValidationLayer.l4_semantic') }} <span class="help">({{ t('common.optional') }})</span></label>
+            <textarea id="semantic_check" name="semantic_check">{{ proposal.semantic_check or '' }}</textarea>
+            <span class="help">{{ t('skill.no_semantic_check') }}</span>
+          </div>
+          <div class="field">
+            <label for="risk_classification">{{ t('common.risk') }}</label>
+            <select id="risk_classification" name="risk_classification">
+              {% for risk in ['read_only', 'reversible_write', 'irreversible_write'] %}
+                <option value="{{ risk }}" {{ 'selected' if proposal.risk_classification == risk }}>
+                  {{ t('enum.RiskClass.' ~ risk) }} — {{ t('skill.risk_hint_' ~ risk) }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn primary" type="submit">{{ t('action.save') }}</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('skill.steps_title') }}</h2></div>
+      <div class="card-body tight">
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>#</th><th>{{ t('common.screen') }}</th><th>{{ t('common.actions') }}</th>
+              <th>{{ t('skill.cascade_title') }}</th><th>{{ t('common.parameters') }}</th></tr></thead>
+            <tbody>
+            {% for step in proposal.steps or [] %}
+              <tr>
+                <td class="cell-sub">{{ step.position }}</td>
+                <td class="cell-sub">{{ step.screen_index + 1 }}</td>
+                <td>{{ t('enum.ActionType.' ~ step.action_type) }}</td>
+                <td>
+                  <ul class="cascade">
+                    {% for selector in step.selectors %}
+                      <li><span class="tier-n {{ 'is-pixel' if selector.tier == 5 }}">{{ selector.tier }}</span>
+                          <span class="mono">{{ selector.value }}</span></li>
+                    {% endfor %}
+                  </ul>
+                </td>
+                <td class="mono cell-sub">{{ step.value_template or '—' }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('training.parameters_detected') }}</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          {% for key, value in (proposal.parameters or {}).items() %}
+            <dt class="mono">{{ key }}</dt><dd class="mono">{{ value }}</dd>
+          {% else %}
+            <dt class="cell-sub">{{ t('common.none') }}</dt><dd></dd>
+          {% endfor %}
+        </dl>
+        <h3 style="margin-top:14px">{{ t('training.constants_detected') }}</h3>
+        <dl class="kv">
+          {% for key, value in (proposal.constants or {}).items() %}
+            <dt class="mono">{{ key }}</dt><dd class="mono">{{ value }}</dd>
+          {% else %}
+            <dt class="cell-sub">{{ t('common.none') }}</dt><dd></dd>
+          {% endfor %}
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('training.screen_boundaries') }}</h2></div>
+      <div class="card-body">
+        <div class="tag-list">
+          {% for screen in proposal.screens or [] %}<span class="pill mono">{{ screen }}</span>{% endfor %}
+        </div>
+        <h3 style="margin-top:14px">{{ t('training.demonstrations') }}</h3>
+        <p class="cell-sub">{{ events | length }} {{ t('common.steps') | lower }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('dashboard.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('dashboard.title') }}</h1>
+    <p>{{ t('dashboard.subtitle', organization=organization['name']) }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn" href="{{ url_for('main.export', fmt='xlsx') }}">{{ t('export.excel') }}</a>
+    <a class="btn" href="{{ url_for('main.export', fmt='pdf') }}">{{ t('export.pdf') }}</a>
+  </div>
+</div>
+
+{% for alert in alerts %}
+  <div class="notice warn">
+    <strong>{{ t('nav.health') }}</strong>
+    {{ t('health.application_alert', application=alert.application) }}
+  </div>
+{% endfor %}
+
+<div class="grid cols-4" style="margin-bottom:16px">
+  <div class="card metric {{ 'is-alert' if summary.intervention_rate > 0.2 }}">
+    <div class="metric-label">{{ t('dashboard.intervention_rate') }}</div>
+    <div class="metric-value">{{ summary.intervention_rate | percent }}</div>
+    {{ ui.rate_bar(summary.intervention_rate, invert=true) }}
+    <div class="metric-note">{{ t('dashboard.intervention_hint') }}</div>
+  </div>
+  <div class="card metric">
+    <div class="metric-label">{{ t('dashboard.success_rate') }}</div>
+    <div class="metric-value">{{ summary.success_rate | percent }}</div>
+    {{ ui.rate_bar(summary.success_rate) }}
+    <div class="metric-note">{{ summary.successes }} / {{ summary.executions }} {{ t('health.executions') | lower }}</div>
+  </div>
+  <div class="card metric">
+    <div class="metric-label">{{ t('dashboard.avg_cost') }}</div>
+    <div class="metric-value">{{ summary.avg_cost_usd | money }}</div>
+    <div class="metric-note">
+      {{ ui.measurement_note(summary.cost_measurement) }}
+      {{ t('economics.per_run_estimate', low='%.3f' % estimate.low_usd, high='%.3f' % estimate.high_usd) }}
+    </div>
+  </div>
+  <div class="card metric {{ 'is-alert' if summary.pending_approvals }}">
+    <div class="metric-label">{{ t('dashboard.pending_approvals') }}</div>
+    <div class="metric-value">{{ summary.pending_approvals }}</div>
+    <div class="metric-note">
+      {% if summary.pending_approvals %}
+        <a href="{{ url_for('main.approvals') }}">{{ t('approval.decide') }}</a>
+      {% else %}{{ t('dashboard.no_pending_approvals') }}{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid side">
+  <div class="card">
+    <div class="card-head">
+      <h2>{{ t('dashboard.recent_executions') }}</h2>
+      <a class="hint" href="{{ url_for('main.queue') }}">{{ t('nav.queue') }} →</a>
+    </div>
+    <div class="card-body tight">
+      {% if recent %}
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th>{{ t('common.skill') }}</th><th>{{ t('common.status') }}</th>
+              <th>{{ t('common.trigger') }}</th><th class="num">{{ t('common.duration') }}</th>
+              <th class="num">{{ t('common.cost') }}</th><th>{{ t('common.created_at') }}</th>
+            </tr></thead>
+            <tbody>
+            {% for row in recent %}
+              <tr>
+                <td>
+                  <a class="cell-main" href="{{ url_for('main.execution_detail', execution_id=row['id']) }}">
+                    {{ skill_names.get(row['skill_id'], t('common.process')) }}</a>
+                  <div class="cell-sub mono">{{ row['id'] | short(10) }}</div>
+                </td>
+                <td>{{ ui.execution_status(row['status']) }}</td>
+                <td><span class="pill">{{ t('enum.Trigger.' ~ row['trigger']) }}</span></td>
+                <td class="num">{{ row['duration_ms'] | duration }}</td>
+                <td class="num">{{ row['cost_usd'] | money }}</td>
+                <td class="cell-sub">{{ row['created_at'] | stamp }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}{{ ui.empty() }}{% endif %}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('dashboard.skills_needing_review') }}</h2></div>
+      <div class="card-body tight">
+        {% if review %}
+          <table class="data">
+            <tbody>
+            {% for row in review %}
+              <tr>
+                <td>
+                  <a class="cell-main" href="{{ url_for('main.skill_detail', skill_id=row['id']) }}">{{ row['name'] }}</a>
+                  <div class="cell-sub">{{ t(row['status_reason']) if row['status_reason'] else '' }}</div>
+                </td>
+                <td style="text-align:right">{{ ui.skill_status(row['status']) }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}{{ ui.empty() }}{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('killswitch.title') }}</h2></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('main.stop_organization') }}">
+          <div class="check">
+            <input type="checkbox" id="stopped" name="stopped" {{ 'checked' if organization['stopped'] }}>
+            <label for="stopped">{{ t('killswitch.organization') }}</label>
+          </div>
+          <div class="field">
+            <input type="text" name="reason" placeholder="{{ t('killswitch.reason_placeholder') }}"
+                   value="{{ organization['stopped_reason'] or '' }}">
+          </div>
+          <button class="btn {{ 'danger' if not organization['stopped'] else '' }}" type="submit"
+                  {{ 'disabled' if not has_permission('organization.manage') }}>
+            {{ t('action.stop') if not organization['stopped'] else t('action.resume') }}
+          </button>
+        </form>
+      </div>
+      <div class="card-foot">{{ t('economics.cache_note') }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

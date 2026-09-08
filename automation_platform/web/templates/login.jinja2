@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t('login.title') }} · {{ t('app.name') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="login-shell">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">A</div>
+      <div class="brand-text">
+        <span class="brand-name" style="color: var(--ink)">{{ t('app.name') }}</span>
+        <span class="brand-sub" style="color: var(--ink-faint)">{{ t('app.tagline') }}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>{{ t('login.title') }}</h2>
+        <div class="lang-switch">
+          {% for code in locales %}
+            <a class="{{ 'is-active' if code == locale }}" href="{{ url_for('auth.login', lang=code) }}">{{ code | upper }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="cell-sub">{{ t('login.subtitle') }}</p>
+
+        <form method="get" action="{{ url_for('auth.login') }}">
+          <div class="field">
+            <label for="organization_id">{{ t('login.organization') }}</label>
+            <select id="organization_id" name="organization_id" onchange="this.form.submit()">
+              {% for org in organizations %}
+                <option value="{{ org['id'] }}" {{ 'selected' if org['id'] == selected }}>{{ org['name'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+          <input type="hidden" name="organization_id" value="{{ selected }}">
+          <div class="field">
+            <label for="user_id">{{ t('login.user') }}</label>
+            {% if users %}
+              <select id="user_id" name="user_id">
+                {% for user in users %}
+                  <option value="{{ user['id'] }}">{{ user['display_name'] }} — {{ t('enum.Role.' ~ user['role']) }}</option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <p class="cell-sub">{{ t('login.no_users') }}</p>
+            {% endif %}
+          </div>
+          <button class="btn primary" type="submit" {{ 'disabled' if not users }}>{{ t('action.enter') }}</button>
+        </form>
+
+        <p class="footnote">{{ t('login.demo_notice') }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

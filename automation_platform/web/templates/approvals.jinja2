@@ -1,0 +1,93 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ t('approval.title') }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ t('approval.title') }}</h1>
+    <p>{{ t('approval.subtitle') }}</p>
+  </div>
+</div>
+
+{% if approvals %}
+  <div class="grid">
+    {% for item in approvals %}
+      <div class="card">
+        <div class="card-head">
+          <h2>{{ item.skill['name'] if item.skill else item.row['proposed_action'] }}</h2>
+          <div class="tag-list">
+            {{ ui.risk_pill(item.skill['risk_classification']) if item.skill }}
+            <span class="cell-sub">{{ t('approval.requested_at') }} {{ item.row['requested_at'] | stamp }}</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid cols-2">
+            <div>
+              <h3>{{ t('approval.proposed_action') }}</h3>
+              {% if item.evidence.proposed_action %}
+                <table class="data" style="margin-top:8px">
+                  <thead><tr><th>{{ t('common.actions') }}</th><th>{{ t('common.name') }}</th><th>{{ t('common.parameters') }}</th></tr></thead>
+                  <tbody>
+                  {% for action in item.evidence.proposed_action %}
+                    <tr>
+                      <td>{{ t('enum.ActionType.' ~ action.action) }}</td>
+                      <td>{{ action.name }}</td>
+                      <td class="mono">{{ action.value or '—' }}</td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              {% else %}
+                <p class="cell-sub">{{ item.row['proposed_action'] }}</p>
+              {% endif %}
+
+              <h3 style="margin-top:14px">{{ t('common.parameters') }}</h3>
+              <dl class="kv">
+                {% for key, value in (item.evidence.inputs or {}).items() %}
+                  <dt>{{ key }}</dt><dd class="mono">{{ value }}</dd>
+                {% endfor %}
+              </dl>
+            </div>
+
+            <div>
+              <h3>{{ t('approval.evidence') }}</h3>
+              <div class="tag-list" style="margin:8px 0">
+                {% for screen in item.evidence.screens or [] %}
+                  <span class="pill mono">{{ screen }}</span>
+                {% endfor %}
+              </div>
+              {% if item.evidence.estimated_cost %}
+                <dl class="kv">
+                  <dt>{{ t('common.cost') }}</dt>
+                  <dd>{{ item.evidence.estimated_cost.cost_usd | money }} USD
+                      {{ ui.measurement_note(item.evidence.estimated_cost.measurement) }}</dd>
+                </dl>
+              {% endif %}
+              <div class="layers">
+                {% for entry in item.evidence.trace or [] %}{{ ui.layer_pill(entry) }}{% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <form method="post" action="{{ url_for('main.decide_approval', approval_id=item.row['id']) }}"
+                style="margin-top:16px; border-top:1px solid var(--line); padding-top:14px">
+            <div class="field">
+              <label for="comment-{{ item.row['id'] }}">{{ t('common.comment') }}</label>
+              <input type="text" id="comment-{{ item.row['id'] }}" name="comment">
+            </div>
+            <div class="page-actions">
+              <button class="btn primary" type="submit" name="decision" value="approve"
+                      {{ 'disabled' if not has_permission('approval.decide') }}>{{ t('action.approve') }}</button>
+              <button class="btn danger" type="submit" name="decision" value="reject"
+                      {{ 'disabled' if not has_permission('approval.decide') }}>{{ t('action.reject') }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card"><div class="card-body">{{ ui.empty('approval.empty') }}</div></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base.jinja2" %}
+{% import "partials/macros.jinja2" as ui with context %}
+{% block title %}{{ skill['name'] }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ skill['name'] }}</h1>
+    <p>{{ skill['description'] }}</p>
+    <div class="tag-list" style="margin-top:8px">
+      {{ ui.skill_status(skill['status']) }}
+      {{ ui.risk_pill(skill['risk_classification']) }}
+      <span class="pill">{{ t('enum.Executor.' ~ skill['executor']) }}</span>
+      <span class="pill">{{ t('common.version') }} {{ skill['version'] }}</span>
+      {% if skill['fragile'] %}<span class="pill warn">{{ t('common.fragile') }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="page-actions">
+    <form class="inline-form" method="post" action="{{ url_for('main.run_skill', skill_id=skill['id']) }}">
+      <button class="btn primary" type="submit"
+              {{ 'disabled' if skill['status'] != 'published' or skill['stopped'] or not has_permission('process.run') }}>
+        {{ t('action.run') }}
+      </button>
+    </form>
+    <form class="inline-form" method="post" action="{{ url_for('main.stop_skill', skill_id=skill['id']) }}">
+      <input type="hidden" name="stopped" value="{{ 'off' if skill['stopped'] else 'on' }}">
+      <button class="btn {{ 'danger' if not skill['stopped'] }}" type="submit"
+              {{ 'disabled' if not has_permission('skill.stop') }}>
+        {{ t('action.resume') if skill['stopped'] else t('action.stop') }}
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if skill['status'] == 'needs_review' %}
+  <div class="notice warn">
+    <strong>{{ t('enum.SkillStatus.needs_review') }}</strong>
+    {{ t('skill.needs_review_warning', reason=t(skill['status_reason']) if skill['status_reason'] else '—') }}
+  </div>
+{% endif %}
+{% if skill['fragile'] %}
+  <div class="notice warn"><strong>{{ t('common.fragile') }}</strong>{{ t('skill.fragile_warning') }}</div>
+{% endif %}
+{% if not skill['semantic_check'] %}
+  <div class="notice info"><strong>{{ t('enum.ValidationLayer.l4_semantic') }}</strong>{{ t('skill.no_semantic_check') }}</div>
+{% endif %}
+
+<div class="grid side">
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-head">
+        <h2>{{ t('skill.definition') }}</h2>
+        {{ ui.screen_meter(screen_count) }}
+      </div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>{{ t('common.application') }}</dt>
+          <dd>{{ application['name'] if application else '—' }}
+              {% if application %}<span class="cell-sub">· {{ application['detected_version'] }}</span>{% endif %}</dd>
+          <dt>{{ t('common.anchor') }}</dt>
+          <dd><span class="expr">{{ skill['start_anchor'] or '—' }}</span></dd>
+          <dt>{{ t('common.precondition') }}</dt>
+          <dd><span class="expr">{{ skill['precondition'] or '—' }}</span></dd>
+          <dt>{{ t('common.postcondition') }}</dt>
+          <dd><span class="expr">{{ skill['postcondition'] }}</span></dd>
+          <dt>{{ t('enum.ValidationLayer.l4_semantic') }}</dt>
+          <dd>{% if skill['semantic_check'] %}<span class="expr">{{ skill['semantic_check'] }}</span>
+              {% else %}<span class="cell-sub">{{ t('common.none') }}</span>{% endif %}</dd>
+          <dt>{{ t('common.risk') }}</dt>
+          <dd>{{ ui.risk_pill(skill['risk_classification']) }}
+              <span class="cell-sub">{{ t('skill.risk_hint_' ~ skill['risk_classification']) }}</span></dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>{{ t('skill.steps_title') }}</h2>
+        <span class="hint">{{ t('skill.cascade_hint') }}</span>
+      </div>
+      <div class="card-body tight">
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th>#</th><th>{{ t('common.screen') }}</th><th>{{ t('common.actions') }}</th>
+              <th>{{ t('skill.cascade_title') }}</th><th>{{ t('common.parameters') }}</th>
+            </tr></thead>
+            <tbody>
+            {% for step in steps %}
+              <tr>
+                <td class="cell-sub">{{ step['position'] }}</td>
+                <td class="cell-sub">{{ step['screen_index'] + 1 }}</td>
+                <td>
+                  <span class="cell-main">{{ t('enum.ActionType.' ~ step['action_type']) if ('enum.ActionType.' ~ step['action_type']) else step['action_type'] }}</span>
+                  {% if step['expected_value'] %}<div class="cell-sub"><span class="expr">{{ step['expected_value'] }}</span></div>{% endif %}
+                </td>
+                <td>
+                  <ul class="cascade">
+                    {% for selector in step['selectors_json'] | fromjson %}
+                      <li>
+                        <span class="tier-n {{ 'is-pixel' if selector.tier == 5 }}">{{ selector.tier }}</span>
+                        <span class="mono">{{ selector.value }}</span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </td>
+                <td class="cell-sub mono">{{ step['value_template'] or '—' }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('health.executions') }}</h2></div>
+      <div class="card-body tight">
+        {% if executions %}
+          <table class="data">
+            <thead><tr><th>{{ t('common.status') }}</th><th>{{ t('common.trigger') }}</th>
+              <th class="num">{{ t('common.cost') }}</th><th>{{ t('common.created_at') }}</th><th></th></tr></thead>
+            <tbody>
+            {% for row in executions %}
+              <tr>
+                <td>{{ ui.execution_status(row['status']) }}</td>
+                <td><span class="pill">{{ t('enum.Trigger.' ~ row['trigger']) }}</span></td>
+                <td class="num">{{ row['cost_usd'] | money }}</td>
+                <td class="cell-sub">{{ row['created_at'] | stamp }}</td>
+                <td><a class="btn small" href="{{ url_for('main.execution_detail', execution_id=row['id']) }}">{{ t('action.details') }}</a></td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}{{ ui.empty() }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h2>{{ t('certification.title') }}</h2></div>
+      <div class="card-body">
+        {% if certification %}
+          <div class="tag-list" style="margin-bottom:10px">
+            {% call ui.status_pill(certification['status']) %}{{ t('enum.CertificationStatus.' ~ certification['status']) }}{% endcall %}
+            <span class="cell-sub">{{ certification['created_at'] | stamp }}</span>
+          </div>
+          <dl class="kv">
+            <dt>{{ t('certification.check_screens') }}</dt>
+            <dd>{{ certification['screens_counted'] }} {{ '✓' if certification['screens_counted'] <= 3 else '✕' }}</dd>
+            <dt>{{ t('certification.check_postcondition') }}</dt>
+            <dd>{{ '✓' if certification['postcondition_ok'] else '✕' }}</dd>
+            <dt>{{ t('certification.check_dry_runs') }}</dt>
+            <dd>{{ t('certification.dry_runs_result', passed=certification['dry_runs_passed'],
+                     total=certification['dry_runs_total'], threshold=9) }}</dd>
+            <dt>{{ t('certification.variation_resize') }}</dt>
+            <dd>{{ '✓' if certification['variation_resize_ok'] else '✕' }}</dd>
+            <dt>{{ t('certification.variation_dialog') }}</dt>
+            <dd>{{ '✓' if certification['variation_dialog_ok'] else '✕' }}</dd>
+            <dt>{{ t('certification.check_risk') }}</dt>
+            <dd>{{ '✓' if certification['risk_declared_ok'] else '✕' }}</dd>
+          </dl>
+        {% else %}
+          <p class="cell-sub">{{ t('certification.never_run') }}</p>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('main.certify', skill_id=skill['id']) }}" style="margin-top:14px">
+          <div class="check">
+            <input type="checkbox" id="risk_declared" name="risk_declared" checked>
+            <label for="risk_declared">{{ t('certification.check_risk') }}</label>
+          </div>
+          <div class="check">
+            <input type="checkbox" id="publish" name="publish">
+            <label for="publish">{{ t('action.publish') }}</label>
+          </div>
+          <button class="btn primary" type="submit" {{ 'disabled' if not has_permission('skill.certify') }}>
+            {{ t('action.certify') if not certification else t('action.recertify') }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>{{ t('skill.health_title') }}</h2></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>{{ t('health.success_rate') }}</dt><dd>{{ health.success_rate | percent }}</dd>
+          <dt>{{ t('health.intervention_rate') }}</dt>
+          <dd>{{ health.intervention_rate | percent }} <span class="pill">{{ t(health.trend_key) }}</span></dd>
+          <dt>{{ t('health.degradations') }}</dt><dd>{{ health.degradations }} <span class="cell-sub">({{ t('common.last_7_days') }})</span></dd>
+          <dt>{{ t('health.drift_detections') }}</dt><dd>{{ health.drift_detections }}</dd>
+          <dt>{{ t('health.avg_cost') }}</dt>
+          <dd>{{ health.avg_cost_usd | money }} {{ ui.measurement_note(health.cost_measurement) }}</dd>
+        </dl>
+        {% if degradations %}
+          <h3 style="margin-top:14px">{{ t('health.degradations') }}</h3>
+          <ul class="cascade" style="margin-top:6px">
+            {% for row in degradations %}
+              <li>
+                <span class="tier-n">{{ row['from_tier'] }}</span>→
+                <span class="tier-n {{ 'is-pixel' if row['to_tier'] == 5 }}">{{ row['to_tier'] }}</span>
+                <span class="cell-sub">{{ row['created_at'] | stamp }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
